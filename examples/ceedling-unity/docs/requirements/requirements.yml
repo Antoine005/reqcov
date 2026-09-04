@@ -1,0 +1,29 @@
+# YAML requirement list (alternative to Markdown). Same fields as the Markdown form.
+requirements:
+  - id: HLR-1
+    title: CRC-16 computation
+    text: The module shall compute CRC-16/CCITT-FALSE over an arbitrary byte buffer.
+    verification: test
+  - id: HLR-2
+    title: Frame validation
+    text: A frame whose trailing CRC does not match the payload shall be rejected.
+    verification: test
+  - id: HLR-3
+    title: Zero-length frames
+    text: A frame with an empty payload shall be rejected.
+    verification: test
+  - id: LLR-10
+    title: CRC table-less implementation
+    text: CRC shall be computed bitwise without a lookup table (RAM budget < 64 bytes).
+    parent: HLR-1
+    verification: test
+  - id: LLR-11
+    title: Frame length check
+    text: frame_validate shall return FRAME_ERR_LEN when length < 3.
+    parents: [HLR-3]
+    verification: test
+  - id: LLR-12
+    title: CRC mismatch
+    text: frame_validate shall return FRAME_ERR_CRC when the CRC field differs from the computed CRC.
+    parent: HLR-2
+    verification: test

@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m pytest -q
+
+  # Dogfooding: run the action on the bundled examples (the pytest one has a
+  # deliberate gap, so it runs in report mode; the GoogleTest example must pass;
+  # the Ceedling one has an intentional failing test and is covered by unit tests).
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run example test-suite (pytest)
+        run: |
+          python -m pip install pytest
+          cd examples/pytest-project && python -m pytest -q --junitxml=reports/junit.xml
+      - name: reqcov on pytest example (report only — has an intentional gap)
+        uses: ./
+        with:
+          root: examples/pytest-project
+          fail-on-error: "false"
+          artifact-name: reqcov-pytest-example
+          comment: "false"
+      - name: reqcov on GoogleTest example
+        uses: ./
+        with:
+          root: examples/googletest
+          artifact-name: reqcov-googletest-example
+          comment: "false"

@@ -1,0 +1,118 @@
+name: "reqcov — requirements coverage"
+description: "Trace requirements to tests and code, post the coverage in the pull request, publish an audit-ready traceability matrix."
+author: "reqcov"
+branding:
+  icon: "check-square"
+  color: "green"
+
+inputs:
+  config:
+    description: "Path to reqcov.yml (default: auto-detect)"
+    required: false
+    default: ""
+  root:
+    description: "Repository sub-directory to analyze"
+    required: false
+    default: "."
+  junit:
+    description: "JUnit XML glob(s), newline separated (overrides reqcov.yml)"
+    required: false
+    default: ""
+  fail-on-error:
+    description: "Fail the job when rules are violated"
+    required: false
+    default: "true"
+  comment:
+    description: "Post / update a sticky comment on the pull request"
+    required: false
+    default: "true"
+  upload-report:
+    description: "Upload the report directory as a workflow artifact"
+    required: false
+    default: "true"
+  artifact-name:
+    description: "Name of the uploaded artifact"
+    required: false
+    default: "reqcov-report"
+  version:
+    description: "reqcov version to install (pip spec), e.g. ==0.1.0"
+    required: false
+    default: ""
+  github-token:
+    description: "Token used to post the PR comment"
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  coverage:
+    description: "Percentage of testable requirements with at least one linked test"
+    value: ${{ steps.run.outputs.coverage }}
+  errors:
+    description: "Number of rule violations"
+    value: ${{ steps.run.outputs.errors }}
+  report-dir:
+    description: "Directory containing index.html, matrix.csv, coverage.json, summary.md"
+    value: ${{ steps.run.outputs.report_dir }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install reqcov
+      shell: bash
+      run: |
+        if [ -f "${{ github.action_path }}/pyproject.toml" ]; then
+          python -m pip install --quiet "${{ github.action_path }}"
+        else
+          python -m pip install --quiet "reqcov${{ inputs.version }}"
+        fi
+
+    - name: Run reqcov
+      id: run
+      shell: bash
+      run: |
+        set +e
+        ARGS=("--root" "${{ inputs.root }}")
+        [ -n "${{ inputs.config }}" ] && ARGS+=("--config" "${{ inputs.config }}")
+        while IFS= read -r g; do [ -n "$g" ] && ARGS+=("--junit" "$g"); done <<< "${{ inputs.junit }}"
+        if [ "${{ inputs.fail-on-error }}" = "true" ]; then CMD=check; else CMD=report; fi
+        reqcov "$CMD" "${ARGS[@]}"
+        echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+    - name: Upload report
+      if: inputs.upload-report == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ steps.run.outputs.report_dir }}
+        if-no-files-found: ignore
+
+    - name: Comment on pull request
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        BODY_FILE="${{ steps.run.outputs.report_dir }}/summary.md"
+        [ -f "$BODY_FILE" ] || exit 0
+        { cat "$BODY_FILE"; echo; echo "[Full traceability matrix]($RUN_URL) (workflow artifact)"; } > /tmp/reqcov-comment.md
+        EXISTING=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- reqcov -->")) | .id' | head -n1)
+        if [ -n "$EXISTING" ]; then
+          gh api -X PATCH "repos/$REPO/issues/comments/$EXISTING" -F body=@/tmp/reqcov-comment.md >/dev/null
+        else
+          gh api "repos/$REPO/issues/$PR/comments" -F body=@/tmp/reqcov-comment.md >/dev/null
+        fi
+
+    - name: Fail on rule violations
+      if: inputs.fail-on-error == 'true' && steps.run.outputs.exit_code != '0'
+      shell: bash
+      run: |
+        echo "reqcov found ${{ steps.run.outputs.errors }} rule violation(s) — see the job summary."
+        exit 1

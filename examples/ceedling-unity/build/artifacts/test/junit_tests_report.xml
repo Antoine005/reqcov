@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites tests="5" failures="1" time="0.021">
+  <testsuite name="test/test_crc16.c" tests="2" failures="0" skipped="0">
+    <testcase name="test_crc16_known_vector" classname="test/test_crc16.c" time="0.001"/>
+    <testcase name="test_crc16_empty_buffer_is_seed" classname="test/test_crc16.c" time="0.001"/>
+  </testsuite>
+  <testsuite name="test/test_frame.c" tests="3" failures="1" skipped="0">
+    <testcase name="test_frame_too_short_is_rejected" classname="test/test_frame.c" time="0.001"/>
+    <testcase name="test_frame_bad_crc_is_rejected" classname="test/test_frame.c" time="0.001">
+      <failure message="Expected 2 Was 0" type="failure">test/test_frame.c:19: Expected 2 Was 0</failure>
+    </testcase>
+    <testcase name="test_frame_good_crc_is_accepted" classname="test/test_frame.c" time="0.001"/>
+  </testsuite>
+</testsuites>

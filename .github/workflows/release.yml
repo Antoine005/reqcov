@@ -1,0 +1,61 @@
+name: Release
+
+# Publishes to PyPI via trusted publishing when a version tag is pushed,
+# then creates the GitHub Release and moves the floating `v0` major tag
+# so `uses: reqcov/reqcov@v0` follows the latest 0.x.
+# One-time setup: on pypi.org, add a "trusted publisher" for this repo
+# (workflow file: release.yml, environment: pypi).
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install build
+      - run: python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" dist/* --title "${{ github.ref_name }}" --notes-file CHANGELOG.md
+      - name: Move floating major tag
+        run: |
+          MAJOR="${GITHUB_REF_NAME%%.*}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -fa "$MAJOR" -m "Update $MAJOR to $GITHUB_REF_NAME"
+          git push origin "$MAJOR" --force

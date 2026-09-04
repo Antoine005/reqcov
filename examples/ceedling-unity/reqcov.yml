@@ -1,0 +1,12 @@
+version: 1
+requirements: [docs/requirements/**/*.yml]
+sources: [src/**/*.c, src/**/*.h]
+tests: [test/**/*.c]
+junit: [build/artifacts/test/*.xml]
+rules:
+  min_test_coverage: 100
+  require_parent_for: [LLR]
+  require_source_for: [LLR]
+  fail_on_failing_tests: true
+report:
+  title: "Frame codec — HLR/LLR traceability (Ceedling + Unity)"

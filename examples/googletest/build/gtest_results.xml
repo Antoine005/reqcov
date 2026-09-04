@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="3" failures="0" disabled="0" errors="0" time="0.001" name="AllTests">
+  <testsuite name="RingBuffer" tests="3" failures="0" disabled="0" errors="0" time="0.001">
+    <testcase name="StoresCapacityElements" status="run" result="completed" time="0" classname="RingBuffer"/>
+    <testcase name="PushOnFullFails" status="run" result="completed" time="0" classname="RingBuffer"/>
+    <testcase name="PopOnEmptyFails" status="run" result="completed" time="0" classname="RingBuffer"/>
+  </testsuite>
+</testsuites>

@@ -1,0 +1,9 @@
+version: 1
+requirements: [docs/requirements/**/*.md]
+sources: ["src/**/*.hpp", "src/**/*.cpp"]
+tests: ["test/**/*.cpp"]
+junit: ["build/*.xml"]     # run: ./ring_buffer_test --gtest_output=xml:build/gtest_results.xml
+rules:
+  min_test_coverage: 100
+report:
+  title: "Ring buffer — traceability (GoogleTest)"

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} — reqcov</title>
+<style>
+  :root { --bg:#f7f8fa; --card:#fff; --ink:#1b1f24; --muted:#5b6470; --line:#e3e6ea;
+          --ok:#1a7f4b; --warn:#b26a00; --bad:#b3261e; --info:#2f5fd1; --na:#8a94a0; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif }
+  header { padding:20px 28px; border-bottom:1px solid var(--line); background:var(--card) }
+  header h1 { margin:0 0 4px; font-size:20px }
+  header .meta { color:var(--muted); font-size:12.5px }
+  main { padding:20px 28px; max-width:1400px; margin:0 auto }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px }
+  .tile { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 14px }
+  .tile .k { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em }
+  .tile .v { font-size:26px; font-weight:600; margin-top:2px }
+  .tile.ok .v { color:var(--ok) } .tile.bad .v { color:var(--bad) } .tile.warn .v { color:var(--warn) }
+  h2 { font-size:15px; margin:26px 0 10px }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top }
+  th { background:#f0f2f5; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  tr:last-child td { border-bottom:0 }
+  code { font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:#f0f2f5; padding:1px 4px; border-radius:3px }
+  .id { font-weight:600; white-space:nowrap }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:600; color:#fff; white-space:nowrap }
+  .badge.verified { background:var(--ok) } .badge.covered { background:var(--info) } .badge.uncovered { background:var(--bad) }
+  .badge.failing { background:var(--bad) } .badge.skipped { background:var(--warn) } .badge.n\/a { background:var(--na) }
+  .muted { color:var(--muted) } .small { font-size:12px }
+  .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px }
+  .toolbar input { padding:7px 10px; border:1px solid var(--line); border-radius:6px; min-width:260px; font-size:13px }
+  .toolbar button { padding:6px 10px; border:1px solid var(--line); background:var(--card); border-radius:6px; cursor:pointer; font-size:12.5px }
+  .toolbar button.active { background:var(--ink); color:#fff; border-color:var(--ink) }
+  .finding { padding:6px 10px; border-left:3px solid var(--info); background:var(--card); margin-bottom:6px; border-radius:0 6px 6px 0 }
+  .finding.error { border-color:var(--bad) } .finding.warning { border-color:var(--warn) }
+  .bar { height:8px; background:#e9ecef; border-radius:4px; overflow:hidden; margin-top:6px }
+  .bar > i { display:block; height:100%; background:var(--ok) }
+  footer { padding:20px 28px; color:var(--muted); font-size:12px }
+  @media print { .toolbar { display:none } th { position:static } }
+</style>
+</head>
+<body>
+<header>
+  <h1>{{ title }}</h1>
+  <div class="meta">Generated {{ generated_at }}{% if git_sha %} · commit <code>{{ git_sha }}</code>{% endif %} · reqcov {{ version }}{% if project %} · {{ project }}{% endif %}</div>
+</header>
+<main>
+  <div class="tiles">
+    <div class="tile"><div class="k">Requirements</div><div class="v">{{ counts.total }}</div></div>
+    <div class="tile {{ 'ok' if test_pct >= 100 else ('warn' if test_pct >= 80 else 'bad') }}"><div class="k">Test coverage</div><div class="v">{{ '%.1f' % test_pct }}%</div><div class="bar"><i style="width:{{ test_pct }}%"></i></div></div>
+    <div class="tile {{ 'ok' if verified_pct >= 100 else 'warn' }}"><div class="k">Verified (tests passed)</div><div class="v">{% if has_results %}{{ '%.1f' % verified_pct }}%{% else %}—{% endif %}</div></div>
+    <div class="tile {{ 'bad' if counts.uncovered else 'ok' }}"><div class="k">Uncovered</div><div class="v">{{ counts.uncovered }}</div></div>
+    <div class="tile {{ 'bad' if counts.failing else 'ok' }}"><div class="k">Failing</div><div class="v">{{ counts.failing }}</div></div>
+    <div class="tile {{ 'bad' if unknown_ids else 'ok' }}"><div class="k">Unknown ids</div><div class="v">{{ unknown_ids|length }}</div></div>
+    <div class="tile {{ 'warn' if orphan_tests else 'ok' }}"><div class="k">Orphan tests</div><div class="v">{{ orphan_tests|length }}</div></div>
+  </div>
+
+  <h2>Coverage by level</h2>
+  <table>
+    <thead><tr><th>Level</th><th>Requirements</th><th>With test</th><th>Verified</th><th>Uncovered</th><th>With source trace</th><th>With parent</th></tr></thead>
+    <tbody>
+    {% for level, rows in by_level.items() %}
+      <tr>
+        <td class="id">{{ level }}</td>
+        <td>{{ rows|length }}</td>
+        <td>{{ rows|selectattr('has_test')|list|length }}</td>
+        <td>{{ rows|selectattr('verification_status','equalto','verified')|list|length }}</td>
+        <td>{{ rows|selectattr('verification_status','equalto','uncovered')|list|length }}</td>
+        <td>{{ rows|selectattr('has_source')|list|length }}</td>
+        <td>{{ rows|map(attribute='requirement')|selectattr('parents')|list|length }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if findings %}
+  <h2>Findings ({{ findings|length }})</h2>
+  {% for f in findings %}
+    <div class="finding {{ f.severity }}"><b>{{ f.severity|upper }}</b> <code>{{ f.code }}</code> {{ f.message }}{% if f.file %} <span class="muted small">— {{ f.file }}{% if f.line %}:{{ f.line }}{% endif %}</span>{% endif %}</div>
+  {% endfor %}
+  {% endif %}
+
+  <h2>Traceability matrix</h2>
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Filter by id, title, test, file…">
+    <button data-f="all" class="active">All</button>
+    <button data-f="uncovered">Uncovered</button>
+    <button data-f="covered">Covered</button>
+    <button data-f="verified">Verified</button>
+    <button data-f="failing">Failing</button>
+    <button data-f="n/a">Not testable</button>
+  </div>
+  <table id="matrix">
+    <thead><tr><th>Requirement</th><th>Title</th><th>Traces up</th><th>Verif.</th><th>Tests</th><th>Implemented in</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for level, rows in by_level.items() %}{% for rc in rows %}{% set r = rc.requirement %}
+      <tr data-status="{{ rc.verification_status }}">
+        <td class="id">{{ r.id }}<div class="muted small">{{ r.file }}{% if r.line %}:{{ r.line }}{% endif %}</div></td>
+        <td>{{ r.title }}{% if r.status != 'approved' %} <span class="muted small">[{{ r.status }}]</span>{% endif %}{% if rc.children %}<div class="muted small">↳ {{ rc.children|join(', ') }}</div>{% endif %}</td>
+        <td>{% for p in r.parents %}<code>{{ p }}</code> {% endfor %}{% if not r.parents %}<span class="muted">—</span>{% endif %}</td>
+        <td>{{ r.verification }}</td>
+        <td>{% for t in rc.tests %}<div><code>{{ t.symbol or t.marker }}</code> <span class="muted small">{{ t.file }}:{{ t.line }}</span></div>{% endfor %}{% if not rc.tests %}<span class="muted">—</span>{% endif %}
+            {% for res in rc.results %}<div class="small">{{ '✓' if res.status == 'passed' else ('✗' if res.status in ('failed','error') else '○') }} {{ res.full_name }}{% if res.message %} <span class="muted">{{ res.message[:80] }}</span>{% endif %}</div>{% endfor %}</td>
+        <td>{% for s in rc.sources %}<div class="small">{{ s.file }}:{{ s.line }}{% if s.symbol %} <code>{{ s.symbol }}</code>{% endif %}</div>{% endfor %}{% if not rc.sources %}<span class="muted">—</span>{% endif %}</td>
+        <td><span class="badge {{ rc.verification_status }}">{{ rc.verification_status }}</span></td>
+      </tr>
+    {% endfor %}{% endfor %}
+    </tbody>
+  </table>
+
+  {% if unknown_ids %}
+  <h2>Unknown identifiers</h2>
+  <table><thead><tr><th>Id</th><th>Where</th><th>Symbol</th></tr></thead><tbody>
+  {% for u in unknown_ids %}<tr><td class="id">{{ u.req_id }}</td><td>{{ u.file }}:{{ u.line }}</td><td><code>{{ u.symbol }}</code></td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+
+  {% if orphan_tests %}
+  <h2>Tests not linked to any requirement ({{ orphan_tests|length }})</h2>
+  <table><thead><tr><th>Test</th><th>Result</th></tr></thead><tbody>
+  {% for t in orphan_tests %}<tr><td><code>{{ t.full_name }}</code></td><td>{{ t.status }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+</main>
+<footer>Generated by reqcov — requirements coverage for pull requests. Statuses: <b>uncovered</b> no linked test · <b>covered</b> linked test, no result · <b>verified</b> all linked tests passed · <b>failing</b> a linked test failed · <b>n/a</b> not verified by test.</footer>
+<script>
+(function(){
+  var q=document.getElementById('q'), rows=[].slice.call(document.querySelectorAll('#matrix tbody tr')), filter='all';
+  function apply(){ var s=(q.value||'').toLowerCase();
+    rows.forEach(function(r){ var ok=(filter==='all'||r.dataset.status===filter)&&(!s||r.textContent.toLowerCase().indexOf(s)>=0); r.style.display=ok?'':'none'; }); }
+  q.addEventListener('input',apply);
+  [].forEach.call(document.querySelectorAll('.toolbar button'),function(b){ b.addEventListener('click',function(){
+    [].forEach.call(document.querySelectorAll('.toolbar button'),function(x){x.classList.remove('active')}); b.classList.add('active'); filter=b.dataset.f; apply(); }); });
+})();
+</script>
+</body>
+</html>

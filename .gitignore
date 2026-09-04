@@ -1,0 +1,13 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+build/lib/
+dist/
+reqcov-report/
+examples/*/reqcov-report/
+examples/pytest-project/reports/
+.venv/
+
+# local-only files
+reqcov-0.1.0.zip
+*-report.html

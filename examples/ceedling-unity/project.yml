@@ -1,0 +1,13 @@
+# Minimal Ceedling project file (Ceedling 1.0). `ceedling test:all` writes JUnit XML to build/artifacts/test/.
+:project:
+  :use_exceptions: FALSE
+  :use_test_preprocessor: :none
+  :build_root: build
+  :test_file_prefix: test_
+:paths:
+  :test: [+:test/**]
+  :source: [src/**]
+:plugins:
+  :enabled: [report_tests_log_factory]
+:report_tests_log_factory:
+  :reports: [junit]
