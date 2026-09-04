@@ -89,7 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: pip install -e . pytest && pytest --junitxml=reports/junit.xml
-      - uses: reqcov/reqcov@v0
+      - uses: Antoine005/reqcov@v0
         with:
           junit: reports/junit.xml
 ```

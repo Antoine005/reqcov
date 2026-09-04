@@ -28,7 +28,7 @@ dev = ["pytest>=7", "pytest-cov"]
 reqcov = "reqcov.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/reqcov/reqcov"
+Homepage = "https://github.com/Antoine005/reqcov"
 
 [tool.setuptools.packages.find]
 include = ["reqcov*"]

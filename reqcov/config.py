@@ -84,7 +84,7 @@ class Config:
         return cfg
 
 
-EXAMPLE_CONFIG = """# reqcov configuration — see https://github.com/reqcov/reqcov
+EXAMPLE_CONFIG = """# reqcov configuration — see https://github.com/Antoine005/reqcov
 version: 1
 
 # Regex for requirement identifiers. Level = everything before the last dash (SYS, SRS, HLR, LLR...).

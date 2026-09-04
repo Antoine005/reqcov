@@ -2,7 +2,7 @@ name: Release
 
 # Publishes to PyPI via trusted publishing when a version tag is pushed,
 # then creates the GitHub Release and moves the floating `v0` major tag
-# so `uses: reqcov/reqcov@v0` follows the latest 0.x.
+# so `uses: Antoine005/reqcov@v0` follows the latest 0.x.
 # One-time setup: on pypi.org, add a "trusted publisher" for this repo
 # (workflow file: release.yml, environment: pypi).
 on:
