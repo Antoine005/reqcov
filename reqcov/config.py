@@ -22,6 +22,7 @@ class Rules:
     require_parent_for: List[str] = field(default_factory=list)  # levels that must have a parent
     require_source_for: List[str] = field(default_factory=list)  # levels that must have an implements link
     allow_derived: bool = True  # if False, missing parent is an error instead of warning
+    fail_on_coverage_drop: bool = False  # error when coverage drops or a requirement loses its test (needs a baseline)
 
 
 @dataclass
@@ -113,6 +114,7 @@ rules:
   fail_on_orphan_tests: false # a test has no requirement marker
   fail_on_failing_tests: true # a linked test failed (needs junit)
   require_parent_for: [SRS]   # these levels must trace up to a parent requirement
+  fail_on_coverage_drop: false # with --base-ref / --baseline: error when coverage regresses
 
 report:
   out_dir: reqcov-report

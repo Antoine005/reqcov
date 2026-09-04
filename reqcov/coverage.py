@@ -20,7 +20,7 @@ def _git_sha(root: str) -> str:
         return ""
 
 
-def analyze(cfg: Config) -> CoverageReport:
+def analyze(cfg: Config, evaluate: bool = True) -> CoverageReport:
     findings: List[Finding] = []
     root = cfg.root
 
@@ -88,7 +88,8 @@ def analyze(cfg: Config) -> CoverageReport:
         git_sha=_git_sha(root),
         title=cfg.report.title,
     )
-    evaluate_rules(report, cfg)
+    if evaluate:
+        evaluate_rules(report, cfg)
     return report
 
 
@@ -137,6 +138,15 @@ def evaluate_rules(report: CoverageReport, cfg: Config) -> None:
         v = report.verified_pct()
         if v + 1e-9 < rules.min_verified:
             f.append(Finding("error", "VERIFIED", f"verified requirements {v:.1f}% is below the required {rules.min_verified:.1f}%"))
+
+    if report.delta is not None:
+        d = report.delta
+        sev = "error" if rules.fail_on_coverage_drop else "warning"
+        for ch in d.regressed:
+            f.append(Finding(sev, "REGRESSION", f"{ch.req_id} lost its test ({ch.before} → {ch.after})",
+                             report.requirements[ch.req_id].requirement.file, report.requirements[ch.req_id].requirement.line))
+        if d.pct_change < -1e-9:
+            f.append(Finding(sev, "COVERAGE_DROP", f"test coverage dropped from {d.base_pct:.1f}% to {d.pct:.1f}%"))
 
     for t in report.orphan_tests:
         f.append(

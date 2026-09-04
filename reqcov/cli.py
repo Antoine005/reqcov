@@ -14,7 +14,8 @@ from typing import List, Optional
 
 from . import __version__
 from .config import EXAMPLE_CONFIG, Config
-from .coverage import analyze
+from .coverage import analyze, evaluate_rules
+from .delta import baseline_from_git, compute_delta, load_baseline
 from .report import render_markdown, write_reports
 
 
@@ -25,6 +26,8 @@ def _common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--out", "-o", help="report output directory (overrides config)")
     p.add_argument("--format", "-f", action="append", choices=["html", "csv", "json", "md"], help="report formats (repeatable)")
     p.add_argument("--no-report", action="store_true", help="do not write report files")
+    p.add_argument("--baseline", help="coverage.json of a previous run to compare against")
+    p.add_argument("--base-ref", help="git ref to compare against (analysed in a temporary worktree)")
     p.add_argument("--quiet", "-q", action="store_true")
 
 
@@ -55,7 +58,17 @@ def _load(args) -> Config:
     return cfg
 
 
+def _utf8_console() -> None:
+    """Windows consoles default to a legacy code page; never crash on ✅ or ▲."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+        except (AttributeError, ValueError):  # pragma: no cover
+            pass
+
+
 def main(argv: Optional[List[str]] = None) -> int:
+    _utf8_console()
     args = build_parser().parse_args(argv)
     if args.cmd is None:
         build_parser().print_help()
@@ -72,7 +85,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     cfg = _load(args)
-    report = analyze(cfg)
+    report = analyze(cfg, evaluate=False)
+    if getattr(args, "baseline", None) or getattr(args, "base_ref", None):
+        try:
+            base = load_baseline(args.baseline) if args.baseline else baseline_from_git(cfg, args.base_ref, args.config)
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"[reqcov] baseline unavailable, delta skipped: {exc}", file=sys.stderr)
+        else:
+            report.delta = compute_delta(report, base)
+    evaluate_rules(report, cfg)
 
     if args.cmd == "list":
         for level, rows in report.by_level().items():

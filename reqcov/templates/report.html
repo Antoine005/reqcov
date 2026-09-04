@@ -49,7 +49,7 @@
 <main>
   <div class="tiles">
     <div class="tile"><div class="k">Requirements</div><div class="v">{{ counts.total }}</div></div>
-    <div class="tile {{ 'ok' if test_pct >= 100 else ('warn' if test_pct >= 80 else 'bad') }}"><div class="k">Test coverage</div><div class="v">{{ '%.1f' % test_pct }}%</div><div class="bar"><i style="width:{{ test_pct }}%"></i></div></div>
+    <div class="tile {{ 'ok' if test_pct >= 100 else ('warn' if test_pct >= 80 else 'bad') }}"><div class="k">Test coverage</div><div class="v">{{ '%.1f' % test_pct }}%{% if delta %} <small title="vs base{% if delta.base_sha %} {{ delta.base_sha }}{% endif %}">{{ '%+.1f' % delta.pct_change }}%</small>{% endif %}</div><div class="bar"><i style="width:{{ test_pct }}%"></i></div></div>
     <div class="tile {{ 'ok' if verified_pct >= 100 else 'warn' }}"><div class="k">Verified (tests passed)</div><div class="v">{% if has_results %}{{ '%.1f' % verified_pct }}%{% else %}—{% endif %}</div></div>
     <div class="tile {{ 'bad' if counts.uncovered else 'ok' }}"><div class="k">Uncovered</div><div class="v">{{ counts.uncovered }}</div></div>
     <div class="tile {{ 'bad' if counts.failing else 'ok' }}"><div class="k">Failing</div><div class="v">{{ counts.failing }}</div></div>

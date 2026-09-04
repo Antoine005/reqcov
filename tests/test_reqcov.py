@@ -168,3 +168,111 @@ def test_cli_init(tmp_path):
     assert (tmp_path / "reqcov.yml").exists()
     cfg = Config.load(root=str(tmp_path))
     assert cfg.rules.require_parent_for == ["SRS"]
+
+
+# --------------------------------------------------------------------------- delta
+
+def _baseline_of(root):
+    return to_json(analyze(_cfg(root)))
+
+
+def test_delta_detects_regression_improvement_added_removed(tmp_path):
+    from reqcov.delta import compute_delta
+
+    root = os.path.join(EXAMPLES, "pytest-project")
+    rep = analyze(_cfg(root))
+    base = _baseline_of(root)
+    same = compute_delta(rep, base)
+    assert same.pct_change == 0 and not same.has_changes
+
+    # simulate a base where SRS-13 had a test, SRS-11 had none, SRS-99 existed and SRS-14 did not
+    for r in base["requirements"]:
+        if r["id"] == "SRS-13":
+            r["status"] = "covered"
+        if r["id"] == "SRS-11":
+            r["status"] = "uncovered"
+    base["requirements"] = [r for r in base["requirements"] if r["id"] != "SRS-14"]
+    base["requirements"].append({"id": "SRS-99", "title": "gone", "status": "covered"})
+    base["summary"]["test_coverage_pct"] = 100.0
+    base["git_sha"] = "abc1234"
+    d = compute_delta(rep, base)
+    assert [c.req_id for c in d.regressed] == ["SRS-13"]
+    assert [c.req_id for c in d.improved] == ["SRS-11"]
+    assert [c.req_id for c in d.added] == ["SRS-14"]
+    assert [c.req_id for c in d.removed] == ["SRS-99"]
+    assert d.pct_change < 0 and d.base_sha == "abc1234"
+
+    rep.delta = d
+    md = render_markdown(rep)
+    assert "▼" in md and "vs `abc1234`" in md and "Regressed (1)" in md
+    js = to_json(rep)["delta"]
+    assert js["regressed"][0]["req_id"] == "SRS-13" and js["base_sha"] == "abc1234"
+
+
+def test_delta_rules_warn_or_fail(tmp_path):
+    from reqcov.coverage import evaluate_rules
+    from reqcov.delta import compute_delta
+
+    root = os.path.join(EXAMPLES, "pytest-project")
+    base = _baseline_of(root)
+    for r in base["requirements"]:
+        if r["id"] == "SRS-13":
+            r["status"] = "covered"
+    base["summary"]["test_coverage_pct"] = 100.0
+
+    cfg = _cfg(root, min_test_coverage=0)
+    rep = analyze(cfg, evaluate=False)
+    rep.delta = compute_delta(rep, base)
+    evaluate_rules(rep, cfg)
+    assert {f.code for f in rep.warnings} >= {"REGRESSION", "COVERAGE_DROP"} and not rep.errors
+
+    cfg = _cfg(root, min_test_coverage=0, fail_on_coverage_drop=True)
+    rep = analyze(cfg, evaluate=False)
+    rep.delta = compute_delta(rep, base)
+    evaluate_rules(rep, cfg)
+    assert {f.code for f in rep.errors} == {"REGRESSION", "COVERAGE_DROP"}
+
+
+def test_cli_baseline_file_and_bad_baseline(tmp_path, capsys):
+    import json
+
+    root = os.path.join(EXAMPLES, "googletest")
+    base = tmp_path / "base.json"
+    base.write_text(json.dumps(_baseline_of(root)))
+    out = tmp_path / "rep"
+    assert main(["check", "--root", root, "--out", str(out), "--baseline", str(base), "-q"]) == 0
+    assert json.loads((out / "coverage.json").read_text())["delta"]["test_coverage_change"] == 0
+    # an unreadable baseline is reported and skipped, never fatal
+    assert main(["check", "--root", root, "--out", str(tmp_path / "rep2"), "--baseline", str(tmp_path / "nope.json"), "-q"]) == 0
+    assert "delta skipped" in capsys.readouterr().err
+
+
+def test_baseline_from_git(tmp_path):
+    import subprocess
+
+    from reqcov.delta import baseline_from_git
+
+    def git(*a):
+        subprocess.run(["git", *a], cwd=tmp_path, check=True, capture_output=True)
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    (tmp_path / "reqs.md").write_text("## R-1 — a\n## R-2 — b\n")
+    (tmp_path / "test_x.py").write_text("# @req R-1\ndef test_x():\n    pass\n")
+    (tmp_path / "reqcov.yml").write_text("requirements: [reqs.md]\ntests: ['test_*.py']\nsources: []\n")
+    git("add", "-A")
+    git("commit", "-q", "-m", "base")
+    # working tree now covers both: the delta against HEAD must show R-2 improved
+    (tmp_path / "test_x.py").write_text("# @req R-1, R-2\ndef test_x():\n    pass\n")
+    cfg = Config.load(root=str(tmp_path))
+    cfg.report.formats = []
+    base = baseline_from_git(cfg, "HEAD")
+    assert base["summary"]["test_coverage_pct"] == 50.0
+    rep = analyze(cfg)
+    from reqcov.delta import compute_delta
+
+    d = compute_delta(rep, base)
+    assert [c.req_id for c in d.improved] == ["R-2"] and d.pct_change == 50.0
+    with pytest.raises(RuntimeError):
+        baseline_from_git(cfg, "no-such-ref")

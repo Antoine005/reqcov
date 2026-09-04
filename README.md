@@ -98,6 +98,43 @@ The action posts (and keeps updating) one sticky comment on the pull request, wr
 summary to the job page, emits annotations on the requirement lines that are uncovered or
 failing, and uploads the report directory as an artifact.
 
+## Coverage delta on pull requests
+
+With `--base-ref`, reqcov analyses the base commit in a temporary git worktree and reports what
+the pull request changed:
+
+```text
+## ✅ Requirements coverage: 100.0% (▲ +12.5% vs `a1b2c3d`)
+### Changes vs base
+- Improved (1): **SRS-13** uncovered → covered
+- New (1): **SRS-15** Sensor calibration (covered)
+```
+
+```bash
+reqcov check --base-ref origin/main          # compare against a branch
+reqcov check --baseline previous/coverage.json
+```
+
+The Action does this automatically on pull requests (`compare-base: "true"`). A requirement that
+loses its test raises `REGRESSION`, a lower percentage raises `COVERAGE_DROP`; both are warnings
+unless `rules.fail_on_coverage_drop` is true. The delta compares static links only, because the
+base commit's tests were not run.
+
+## GitLab CI
+
+```yaml
+# see examples/gitlab-ci.yml for the full template
+requirements:
+  image: python:3.12
+  script:
+    - pip install reqcov
+    - pytest --junitxml=reports/junit.xml || true
+    - reqcov check --base-ref "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+  artifacts:
+    when: always
+    paths: [reqcov-report/]
+```
+
 ## Configuration (`reqcov.yml`)
 
 ```yaml
@@ -116,6 +153,7 @@ rules:
   require_parent_for: [SRS]     # levels that must trace up
   require_source_for: []        # levels that must have an @implements
   allow_derived: true           # missing parent = warning (false: error)
+  fail_on_coverage_drop: false  # with --base-ref: regression = error
 report:
   out_dir: reqcov-report
   formats: [html, csv, json, md]
@@ -139,13 +177,15 @@ as `n/a` in the matrix so the auditor still sees them.
 - [`examples/pytest-project`](examples/pytest-project) — Python, SYS→SRS levels, one deliberate gap and one orphan test.
 - [`examples/ceedling-unity`](examples/ceedling-unity) — C, HLR→LLR, `@implements` in sources, a failing Unity test propagating to two requirements.
 - [`examples/googletest`](examples/googletest) — C++, one-line requirements, GoogleTest `Suite.Name` results.
+- [`examples/gitlab-ci.yml`](examples/gitlab-ci.yml) — GitLab CI job with merge-request delta and report artifact.
 
 ## Status and roadmap
 
 `0.1` — CLI, Markdown/YAML/Doorstop input, marker scanning, JUnit merge, HTML/CSV/JSON/MD
-reports, GitHub Action with sticky PR comment. Planned: coverage delta against the base
-branch, StrictDoc and ReqIF input, Jira issue links, GitLab CI template, signed PDF export for
-audit packages, hosted history and badges.
+reports, GitHub Action with sticky PR comment.
+`0.2` — coverage delta against the base branch, GitLab CI template.
+Planned: StrictDoc and ReqIF input, Jira issue links, signed PDF export for audit packages,
+hosted history and badges.
 
 ## License
 

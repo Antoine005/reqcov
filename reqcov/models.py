@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
+
+if TYPE_CHECKING:  # pragma: no cover - avoids a circular import
+    from .delta import Delta
 
 
 @dataclass
@@ -102,6 +105,7 @@ class CoverageReport:
     generated_at: str
     git_sha: str = ""
     title: str = "Requirements Traceability"
+    delta: Optional["Delta"] = None  # set when compared against a baseline
 
     # ---- summary helpers -------------------------------------------------
     def by_level(self) -> Dict[str, List[RequirementCoverage]]:

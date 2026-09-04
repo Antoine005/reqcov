@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reqcov"
-version = "0.1.0"
+version = "0.2.0"
 description = "Automate requirements traceability: trace requirements to tests and code, fail CI on gaps, generate audit-ready traceability matrices."
 readme = "README.md"
 license = { text = "MIT" }

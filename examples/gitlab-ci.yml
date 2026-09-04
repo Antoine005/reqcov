@@ -1,0 +1,50 @@
+# GitLab CI template for reqcov.
+#
+# Copy this job into your .gitlab-ci.yml. It runs your tests with JUnit output,
+# computes requirements coverage, compares merge requests against their target
+# branch, keeps the report as an artifact and publishes the summary as a
+# merge-request note when a project access token is available.
+#
+# Variables (Settings > CI/CD > Variables):
+#   REQCOV_MR_TOKEN  optional, a project access token with `api` scope, used to
+#                    post / update the sticky merge-request note.
+
+requirements:
+  stage: test
+  image: python:3.12
+  variables:
+    GIT_DEPTH: "0" # the delta needs the target branch commit
+  before_script:
+    - pip install --quiet reqcov pytest
+  script:
+    - python -m pytest -q --junitxml=reports/junit.xml || true
+    - |
+      BASE=""
+      if [ -n "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" ]; then
+        git fetch --quiet origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+        BASE="--base-ref origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+      fi
+      set +e
+      reqcov check $BASE
+      STATUS=$?
+      set -e
+    - |
+      if [ -n "$CI_MERGE_REQUEST_IID" ] && [ -n "$REQCOV_MR_TOKEN" ] && [ -f reqcov-report/summary.md ]; then
+        API="$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes"
+        BODY=$(python -c 'import json,sys;print(json.dumps({"body": open("reqcov-report/summary.md", encoding="utf-8").read()}))')
+        EXISTING=$(curl -s --header "PRIVATE-TOKEN: $REQCOV_MR_TOKEN" "$API?per_page=100" \
+          | python -c 'import json,sys;print(next((str(n["id"]) for n in json.load(sys.stdin) if n["body"].startswith("<!-- reqcov -->")), ""))')
+        if [ -n "$EXISTING" ]; then
+          curl -s -X PUT --header "PRIVATE-TOKEN: $REQCOV_MR_TOKEN" --header "Content-Type: application/json" --data "$BODY" "$API/$EXISTING" >/dev/null
+        else
+          curl -s -X POST --header "PRIVATE-TOKEN: $REQCOV_MR_TOKEN" --header "Content-Type: application/json" --data "$BODY" "$API" >/dev/null
+        fi
+      fi
+    - exit $STATUS
+  artifacts:
+    when: always
+    expose_as: "Requirements traceability"
+    paths:
+      - reqcov-report/
+    reports:
+      junit: reports/junit.xml

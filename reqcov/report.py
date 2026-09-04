@@ -58,6 +58,7 @@ def render_html(report: CoverageReport, cfg: Config) -> str:
         findings=sorted(report.findings, key=lambda f: {"error": 0, "warning": 1, "info": 2}[f.severity]),
         unknown_ids=report.unknown_ids,
         orphan_tests=report.orphan_tests,
+        delta=report.delta,
     )
 
 
@@ -120,6 +121,18 @@ def to_json(report: CoverageReport) -> Dict:
         "unknown_ids": [dataclasses.asdict(u) for u in report.unknown_ids],
         "orphan_tests": [dataclasses.asdict(t) for t in report.orphan_tests],
         "findings": [dataclasses.asdict(f) for f in report.findings],
+        "delta": None
+        if report.delta is None
+        else {
+            "base_sha": report.delta.base_sha,
+            "base_test_coverage_pct": round(report.delta.base_pct, 2),
+            "test_coverage_change": round(report.delta.pct_change, 2),
+            "added": [dataclasses.asdict(c) for c in report.delta.added],
+            "removed": [dataclasses.asdict(c) for c in report.delta.removed],
+            "improved": [dataclasses.asdict(c) for c in report.delta.improved],
+            "regressed": [dataclasses.asdict(c) for c in report.delta.regressed],
+            "other": [dataclasses.asdict(c) for c in report.delta.other],
+        },
     }
 
 
@@ -129,7 +142,13 @@ def render_markdown(report: CoverageReport, max_rows: int = 30) -> str:
     icon = "✅" if not report.errors else "❌"
     lines: List[str] = []
     lines.append("<!-- reqcov -->")
-    lines.append(f"## {icon} Requirements coverage: {pct:.1f}%")
+    head = f"## {icon} Requirements coverage: {pct:.1f}%"
+    d = report.delta
+    if d is not None:
+        arrow = "▲" if d.pct_change > 1e-9 else ("▼" if d.pct_change < -1e-9 else "=")
+        base = f" vs `{d.base_sha}`" if d.base_sha else " vs base"
+        head += f" ({arrow} {d.pct_change:+.1f}%{base})"
+    lines.append(head)
     lines.append("")
     lines.append("| Requirements | With test | Verified | Uncovered | Failing | Unknown ids | Orphan tests |")
     lines.append("|---:|---:|---:|---:|---:|---:|---:|")
@@ -152,6 +171,20 @@ def render_markdown(report: CoverageReport, max_rows: int = 30) -> str:
             lines.append(f"- `{f.code}` {f.message}{loc}")
         if len(report.errors) > max_rows:
             lines.append(f"- … {len(report.errors) - max_rows} more")
+        lines.append("")
+    if d is not None and d.has_changes:
+        lines.append("### Changes vs base")
+        for label, rows, fmt in (
+            ("Regressed", d.regressed, lambda c: f"**{c.req_id}** {c.before} → {c.after}"),
+            ("Improved", d.improved, lambda c: f"**{c.req_id}** {c.before} → {c.after}"),
+            ("New", d.added, lambda c: f"**{c.req_id}** {c.title} ({c.after})"),
+            ("Removed", d.removed, lambda c: f"**{c.req_id}** {c.title}"),
+            ("Other", d.other, lambda c: f"**{c.req_id}** {c.before} → {c.after}"),
+        ):
+            if rows:
+                shown = ", ".join(fmt(c) for c in rows[:max_rows])
+                more = f", … {len(rows) - max_rows} more" if len(rows) > max_rows else ""
+                lines.append(f"- {label} ({len(rows)}): {shown}{more}")
         lines.append("")
     uncovered = [rc for rc in report.requirements.values() if rc.verification_status == "uncovered"]
     if uncovered:
