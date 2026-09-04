@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 — unreleased
+## 0.2.0 — 2026-09-04
 - Coverage delta against a baseline: `--base-ref <git ref>` analyses the ref in a temporary
   worktree, `--baseline coverage.json` reuses a previous run. The PR comment headline shows the
   change, a "Changes vs base" section lists regressed / improved / new / removed requirements,
