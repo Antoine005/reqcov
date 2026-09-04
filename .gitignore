@@ -5,7 +5,6 @@ build/lib/
 dist/
 reqcov-report/
 examples/*/reqcov-report/
-examples/pytest-project/reports/
 .venv/
 
 # local-only files

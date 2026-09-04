@@ -1,0 +1,29 @@
+name: reqcov (dogfood)
+
+# Runs reqcov on the bundled thermostat example for every pull request and
+# posts the sticky coverage comment, so contributors see the Action at work.
+# The example has an intentional gap (SRS-13), so it reports but never blocks.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  reqcov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run the example test-suite
+        run: |
+          python -m pip install pytest
+          cd examples/pytest-project && python -m pytest -q --junitxml=reports/junit.xml
+      - uses: ./
+        with:
+          root: examples/pytest-project
+          fail-on-error: "false"
+          artifact-name: reqcov-thermostat
