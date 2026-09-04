@@ -1,5 +1,5 @@
 name: "reqcov — requirements coverage"
-description: "Automate requirements traceability: trace requirements to tests and code, post coverage in the pull request, publish an audit-ready matrix."
+description: "Automate requirements traceability: link requirements to tests and code, report coverage on every pull request."
 author: "reqcov"
 branding:
   icon: "check-square"
