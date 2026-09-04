@@ -8,6 +8,14 @@ auditor asks for (IEC 62304, ISO 26262, EN 50128, DO-178C, IEC 61508, ECSS).
 
 No server, no account, no new editor: a CLI + a GitHub Action.
 
+[![PyPI](https://img.shields.io/pypi/v/reqcov)](https://pypi.org/project/reqcov/)
+[![CI](https://github.com/Antoine005/reqcov/actions/workflows/ci.yml/badge.svg)](https://github.com/Antoine005/reqcov/actions/workflows/ci.yml)
+[![Marketplace](https://img.shields.io/badge/GitHub%20Marketplace-reqcov-blue)](https://github.com/marketplace/actions/reqcov-requirements-coverage)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+> A hosted version with coverage history, badges and a signed PDF for audit packages is
+> planned. [Join the waitlist](https://tally.so/r/Me4K28) if your team would use it.
+
 ```text
 ## ❌ Requirements coverage: 83.3%
 
@@ -186,6 +194,10 @@ reports, GitHub Action with sticky PR comment.
 `0.2` — coverage delta against the base branch, GitLab CI template.
 Planned: StrictDoc and ReqIF input, Jira issue links, signed PDF export for audit packages,
 hosted history and badges.
+
+## Read more
+
+- [An IEC 62304 traceability matrix from GitHub Actions in 15 minutes](docs/blog/iec-62304-traceability-matrix-github-actions.md)
 
 ## License
 
