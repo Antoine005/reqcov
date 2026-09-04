@@ -1,6 +1,6 @@
 # An IEC 62304 traceability matrix from GitHub Actions in 15 minutes
 
-*Published 2026-09-04. Also on dev.to.*
+*2026-09-04*
 
 If you ship software under IEC 62304, ISO 26262, DO-178C or EN 50128, you already know the
 drill before an audit: someone opens Excel, lists every requirement, and hunts through the
