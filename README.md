@@ -16,6 +16,18 @@ No server, no account, no new editor: a CLI + a GitHub Action.
 > A hosted version with coverage history, badges and a signed PDF for audit packages is
 > planned. [Join the waitlist](https://tally.so/r/Me4K28) if your team would use it.
 
+**[▶ See a live report](https://antoine005.github.io/reqcov/)** — the real output for the Python,
+C and C++ examples below, regenerated on every push. Nothing to install.
+
+[![reqcov report overview](docs/img/report-overview.png)](https://antoine005.github.io/reqcov/pytest-project/index.html)
+
+The matrix is filterable by status, every requirement links back to its source line, and every
+test links to the file that references it:
+
+[![reqcov traceability matrix](docs/img/report-matrix.png)](https://antoine005.github.io/reqcov/pytest-project/index.html)
+
+On a pull request the same run becomes one sticky comment:
+
 ```text
 ## ❌ Requirements coverage: 83.3%
 
@@ -182,10 +194,15 @@ as `n/a` in the matrix so the auditor still sees them.
 
 ## Examples
 
-- [`examples/pytest-project`](examples/pytest-project) — Python, SYS→SRS levels, one deliberate gap and one orphan test.
-- [`examples/ceedling-unity`](examples/ceedling-unity) — C, HLR→LLR, `@implements` in sources, a failing Unity test propagating to two requirements.
-- [`examples/googletest`](examples/googletest) — C++, one-line requirements, GoogleTest `Suite.Name` results.
-- [`examples/gitlab-ci.yml`](examples/gitlab-ci.yml) — GitLab CI job with merge-request delta and report artifact.
+Every report below is [published live](https://antoine005.github.io/reqcov/) — open one before
+installing anything.
+
+| Example | Stack | What it shows | Live report |
+|---|---|---|---|
+| [`examples/pytest-project`](examples/pytest-project) | Python, pytest | SYS→SRS levels, one deliberate gap and one orphan test | [open](https://antoine005.github.io/reqcov/pytest-project/index.html) |
+| [`examples/ceedling-unity`](examples/ceedling-unity) | C, Ceedling/Unity | HLR→LLR, `@implements` in sources, a failing test propagating to two requirements | [open](https://antoine005.github.io/reqcov/ceedling-unity/index.html) |
+| [`examples/googletest`](examples/googletest) | C++, GoogleTest | one-line requirements, `Suite.Name` results | [open](https://antoine005.github.io/reqcov/googletest/index.html) |
+| [`examples/gitlab-ci.yml`](examples/gitlab-ci.yml) | GitLab CI | merge-request delta and report artifact | — |
 
 ## Status and roadmap
 

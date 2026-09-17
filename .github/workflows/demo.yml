@@ -1,0 +1,61 @@
+name: Demo site
+
+# Publishes the reports of the three bundled examples to GitHub Pages, so that
+# anyone can see what reqcov produces without installing anything:
+#   https://antoine005.github.io/reqcov/
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install reqcov
+        run: python -m pip install -e . pytest
+
+      - name: Run the pytest example test-suite
+        working-directory: examples/pytest-project
+        run: python -m pytest -q --junitxml=reports/junit.xml
+
+      - name: Generate the three reports
+        run: |
+          set -e
+          mkdir -p site
+          for ex in pytest-project ceedling-unity googletest; do
+            reqcov report --root "examples/$ex"
+            mkdir -p "site/$ex"
+            cp -r "examples/$ex/reqcov-report/." "site/$ex/"
+          done
+
+      - name: Build the landing page
+        run: python .github/scripts/build_demo_index.py site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
