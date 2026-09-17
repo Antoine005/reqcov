@@ -14,6 +14,10 @@ every pull request.
 
 ## What you end up with
 
+[A live report for each of the three example projects](https://antoine005.github.io/reqcov/) is published on every push — open one before installing anything:
+
+[![reqcov report overview](../img/report-overview.png)](https://antoine005.github.io/reqcov/pytest-project/index.html)
+
 Every pull request gets one comment:
 
 ```text
@@ -124,6 +128,7 @@ as the CI layer.
 
 ## Try it
 
+- Live example reports: https://antoine005.github.io/reqcov/
 - Repository and examples: https://github.com/Antoine005/reqcov
 - `pip install reqcov`
 - Three worked examples: pytest, Ceedling/Unity (C), GoogleTest (C++)
