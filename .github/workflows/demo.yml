@@ -44,6 +44,8 @@ jobs:
           done
 
       - name: Build the landing page
+        env:
+          GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
         run: python .github/scripts/build_demo_index.py site
 
       - uses: actions/upload-pages-artifact@v3
