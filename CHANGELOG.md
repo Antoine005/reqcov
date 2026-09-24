@@ -9,6 +9,9 @@
 - `coverage.json` carries `"schema": 1`; its format and compatibility rules are documented in
   `docs/coverage-json.md`. `--baseline` refuses a file written with a newer schema.
 - README: "Adopting reqcov on an existing project" (DOORS + Jira + existing tests).
+- Fix: the coverage delta no longer lists every tested requirement as "covered → verified"
+  when the base was analysed without test results (the Action's pull-request comparison):
+  unless both sides have results, only gaining or losing a test is a change.
 
 ## 0.3.0 — 2026-09-24
 - ReqIF import: `.reqif` files and `.reqifz` archives from DOORS, Polarion, codebeamer, Jama,

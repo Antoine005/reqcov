@@ -209,6 +209,26 @@ def test_delta_detects_regression_improvement_added_removed(tmp_path):
     assert js["regressed"][0]["req_id"] == "SRS-13" and js["base_sha"] == "abc1234"
 
 
+def test_delta_ignores_results_missing_on_one_side():
+    from reqcov.delta import compute_delta
+
+    root = os.path.join(EXAMPLES, "pytest-project")
+    rep = analyze(_cfg(root))  # with JUnit: SRS-10/11/12 verified
+    # a base analysed from git has no results: its tested requirements are only "covered"
+    static = _baseline_of(root)
+    for r in static["requirements"]:
+        if r["status"] == "verified":
+            r["status"] = "covered"
+    assert not compute_delta(rep, static).has_changes
+    # both sides with results: verified -> failing is a real change and is reported
+    base = _baseline_of(root)
+    for r in base["requirements"]:
+        if r["id"] == "SRS-10":
+            r["status"] = "failing"
+    d = compute_delta(rep, base)
+    assert [(c.req_id, c.before, c.after) for c in d.other] == [("SRS-10", "failing", "verified")]
+
+
 def test_delta_rules_warn_or_fail(tmp_path):
     from reqcov.coverage import evaluate_rules
     from reqcov.delta import compute_delta

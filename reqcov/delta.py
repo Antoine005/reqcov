@@ -61,6 +61,9 @@ def load_baseline(path: str) -> Dict:
     return data
 
 
+_RESULT_STATUSES = ("verified", "failing", "skipped")  # only reachable with test results
+
+
 def _has_test(status: str) -> bool:
     return status in ("covered", "verified", "failing", "skipped")
 
@@ -74,13 +77,18 @@ def compute_delta(report: CoverageReport, baseline: Dict) -> Delta:
         base_pct=float(baseline["summary"].get("test_coverage_pct", 0.0)),
         pct=round(report.test_coverage_pct(), 2),
     )
+    # A base analysed from git has no test results, so its tested requirements read "covered"
+    # while this run's read "verified": that is not a change. Unless both sides carry results,
+    # only gaining or losing a test counts.
+    base_has_results = any(s in _RESULT_STATUSES for s in base_status.values())
+    static = not (base_has_results and report.results)
     for rid, rc in sorted(report.requirements.items(), key=lambda kv: natural_key(kv[0])):
         now = rc.verification_status
         if rid not in base_status:
             d.added.append(StatusChange(rid, rc.requirement.title, "", now))
             continue
         before = base_status[rid]
-        if before == now:
+        if before == now or (static and _has_test(before) and _has_test(now)):
             continue
         ch = StatusChange(rid, rc.requirement.title, before, now)
         if not _has_test(before) and _has_test(now):
