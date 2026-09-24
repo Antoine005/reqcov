@@ -6,7 +6,7 @@ versioned by its top-level `schema` number.
 
 **Compatibility promise.** Within one `schema` version, keys are only ever *added*. Renaming or
 removing a key, or changing what a value means, bumps `schema`. Readers should ignore keys they
-do not know. Files written before reqcov 0.4 have no `schema` key and are version 1.
+do not know. Files written before reqcov 0.3.1 have no `schema` key and are version 1.
 `reqcov --baseline` refuses a file with a newer `schema` than it understands.
 
 ## Schema 1

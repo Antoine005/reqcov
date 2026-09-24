@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1 — 2026-09-24
 - ReqIF: `reqif.id_prefix` also takes a mapping `{specification name: prefix}`, so a DOORS
   export holding several modules (each numbered from 1) gives `SYS-1`, `SRS-1`...
 - ReqIF export keeps the SPEC-OBJECT identifiers of requirements that were read from ReqIF,

@@ -292,6 +292,8 @@ installing anything.
 reports, GitHub Action with sticky PR comment.
 `0.2` — coverage delta against the base branch, GitLab CI template.
 `0.3` — ReqIF import and export, Jira issue links, PDF export.
+`0.3.1` — adoption on existing projects: multi-module DOORS exports, ReqIF identifiers kept on
+export, versioned `coverage.json`.
 Planned: hosted history and badges, signed and timestamped PDF, StrictDoc input.
 
 ## Read more

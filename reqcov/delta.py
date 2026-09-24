@@ -56,7 +56,7 @@ def load_baseline(path: str) -> Dict:
         raise ValueError(f"{path} is not a reqcov coverage.json")
     from .report import JSON_SCHEMA
 
-    if data.get("schema", 1) > JSON_SCHEMA:  # files before 0.4 have no "schema": version 1
+    if data.get("schema", 1) > JSON_SCHEMA:  # files before 0.3.1 have no "schema": version 1
         raise ValueError(f"{path} was written by a newer reqcov (coverage.json schema {data['schema']})")
     return data
 
