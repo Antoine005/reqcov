@@ -212,7 +212,7 @@ def test_jira_links_in_reports(tmp_path):
     assert Config.from_dict({"jira": "https://x.example"}).jira.issue_url("A-1") == "https://x.example/browse/A-1"
 
 
-# --------------------------------------------------------------------------- 0.4: brownfield adoption
+# --------------------------------------------------------------------------- 0.3.1: brownfield adoption
 
 def _two_module_export() -> bytes:
     """Two DOORS modules in one exchange file, numbered from 1 each, one link SRS 1 -> SYS 1."""
