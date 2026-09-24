@@ -296,7 +296,7 @@ def test_coverage_json_schema_and_newer_baseline_refused(tmp_path):
     data = to_json(analyze(_cfg(root)))
     assert data["schema"] == 1
     old = dict(data)
-    del old["schema"]  # written by reqcov < 0.4
+    del old["schema"]  # written by reqcov < 0.3.1
     (tmp_path / "old.json").write_text(json.dumps(old))
     assert load_baseline(str(tmp_path / "old.json"))["summary"] == data["summary"]
     data["schema"] = 2
