@@ -38,7 +38,7 @@ jobs:
           set -e
           mkdir -p site
           for ex in pytest-project ceedling-unity googletest; do
-            reqcov report --root "examples/$ex"
+            reqcov report --root "examples/$ex" -f html -f csv -f json -f md -f pdf -f reqif
             mkdir -p "site/$ex"
             cp -r "examples/$ex/reqcov-report/." "site/$ex/"
           done

@@ -17,6 +17,7 @@ class Requirement:
     verification: str = "test"  # test | analysis | inspection | demonstration | none
     status: str = "approved"  # draft | approved | obsolete ...
     tags: List[str] = field(default_factory=list)
+    jira: List[str] = field(default_factory=list)  # linked issue keys, e.g. ["PROJ-12"]
     file: str = ""
     line: int = 0
     level: str = ""  # derived from id prefix, e.g. "SYS", "SRS"

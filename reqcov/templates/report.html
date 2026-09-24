@@ -29,6 +29,7 @@
   .badge.verified { background:var(--ok) } .badge.covered { background:var(--info) } .badge.uncovered { background:var(--bad) }
   .badge.failing { background:var(--bad) } .badge.skipped { background:var(--warn) } .badge.n\/a { background:var(--na) }
   .muted { color:var(--muted) } .small { font-size:12px }
+  a.jira { color:var(--info); text-decoration:none; font-weight:600 } a.jira:hover { text-decoration:underline }
   .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px }
   .toolbar input { padding:7px 10px; border:1px solid var(--line); border-radius:6px; min-width:260px; font-size:13px }
   .toolbar button { padding:6px 10px; border:1px solid var(--line); background:var(--card); border-radius:6px; cursor:pointer; font-size:12.5px }
@@ -98,7 +99,7 @@
     {% for level, rows in by_level.items() %}{% for rc in rows %}{% set r = rc.requirement %}
       <tr data-status="{{ rc.verification_status }}">
         <td class="id">{{ r.id }}<div class="muted small">{{ r.file }}{% if r.line %}:{{ r.line }}{% endif %}</div></td>
-        <td>{{ r.title }}{% if r.status != 'approved' %} <span class="muted small">[{{ r.status }}]</span>{% endif %}{% if rc.children %}<div class="muted small">↳ {{ rc.children|join(', ') }}</div>{% endif %}</td>
+        <td>{{ r.title }}{% if r.status != 'approved' %} <span class="muted small">[{{ r.status }}]</span>{% endif %}{% if r.jira %}<div class="small">{% for k in r.jira %}{% if jira.url %}<a class="jira" href="{{ jira.issue_url(k) }}">{{ k }}</a>{% else %}<code>{{ k }}</code>{% endif %} {% endfor %}</div>{% endif %}{% if rc.children %}<div class="muted small">↳ {{ rc.children|join(', ') }}</div>{% endif %}</td>
         <td>{% for p in r.parents %}<code>{{ p }}</code> {% endfor %}{% if not r.parents %}<span class="muted">—</span>{% endif %}</td>
         <td>{{ r.verification }}</td>
         <td>{% for t in rc.tests %}<div><code>{{ t.symbol or t.marker }}</code> <span class="muted small">{{ t.file }}:{{ t.line }}</span></div>{% endfor %}{% if not rc.tests %}<span class="muted">—</span>{% endif %}

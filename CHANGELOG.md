@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0 — 2026-09-24
+- ReqIF import: `.reqif` files and `.reqifz` archives from DOORS, Polarion, codebeamer, Jama,
+  Enterprise Architect... are read like any other requirement file. Attributes are matched by
+  name (`ReqIF.ForeignID`, `ReqIF.Name`, `ReqIF.Text`, `Verification Method`, `Status`...),
+  SPEC-RELATIONs become parent links, chapter headings are skipped. New `reqif:` settings:
+  `id_prefix` (DOORS exports the absolute number: `SRS-` + `12`), `id_attribute`,
+  `parent_end`, `relation_types`.
+- ReqIF export: report format `reqif` writes `requirements.reqif` (valid against the OMG
+  schema) with one specification per level, parent relations and the coverage of the run as
+  `reqcov.*` attributes, ready to import back into the requirements tool.
+- PDF export: report format `pdf` writes `matrix.pdf`, an A4 audit document with the summary,
+  coverage by level, findings, delta, a sign-off table and the full matrix. No new dependency.
+- Jira links: a `Jira:` (or `Issue:`, `Ticket:`) field on a requirement lists issue keys;
+  with `jira.url` set they become links in the HTML report and the PR comment. Keys are also
+  in `matrix.csv` (new last column `jira`), `coverage.json`, the PDF and the ReqIF export.
+- `reqcov init` and the default requirement globs include `docs/requirements/**/*.reqif`.
+
 ## 0.2.0 — 2026-09-04
 - Coverage delta against a baseline: `--base-ref <git ref>` analyses the ref in a temporary
   worktree, `--baseline coverage.json` reuses a previous run. The PR comment headline shows the

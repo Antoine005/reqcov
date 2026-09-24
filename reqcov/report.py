@@ -1,4 +1,4 @@
-"""Report writers: HTML, CSV, JSON, Markdown (PR comment / job summary)."""
+"""Report writers: HTML, CSV, JSON, Markdown (PR comment / job summary), PDF, ReqIF."""
 from __future__ import annotations
 
 import csv
@@ -10,8 +10,10 @@ from typing import Dict, List
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 from . import __version__
-from .config import Config
+from .config import Config, JiraConfig
 from .models import CoverageReport
+from .pdf import render_pdf
+from .reqif import render_reqif
 
 _env = Environment(loader=PackageLoader("reqcov", "templates"), autoescape=select_autoescape(["html"]))
 
@@ -35,7 +37,15 @@ def write_reports(report: CoverageReport, cfg: Config) -> Dict[str, str]:
         elif fmt == "md":
             p = os.path.join(out_dir, "summary.md")
             with open(p, "w", encoding="utf-8") as fh:
-                fh.write(render_markdown(report))
+                fh.write(render_markdown(report, jira_url=cfg.jira.url))
+        elif fmt == "pdf":
+            p = os.path.join(out_dir, "matrix.pdf")
+            with open(p, "wb") as fh:
+                fh.write(render_pdf(report, cfg))
+        elif fmt == "reqif":
+            p = os.path.join(out_dir, "requirements.reqif")
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write(render_reqif(report, cfg))
         else:
             continue
         written[fmt] = p
@@ -59,13 +69,14 @@ def render_html(report: CoverageReport, cfg: Config) -> str:
         unknown_ids=report.unknown_ids,
         orphan_tests=report.orphan_tests,
         delta=report.delta,
+        jira=cfg.jira,
     )
 
 
 def write_csv(report: CoverageReport, path: str) -> None:
     with open(path, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
-        w.writerow(["id", "level", "title", "parents", "verification", "req_status", "tests", "test_results", "sources", "coverage_status", "file"])
+        w.writerow(["id", "level", "title", "parents", "verification", "req_status", "tests", "test_results", "sources", "coverage_status", "file", "jira"])
         for level, rows in report.by_level().items():
             for rc in rows:
                 r = rc.requirement
@@ -82,6 +93,7 @@ def write_csv(report: CoverageReport, path: str) -> None:
                         "; ".join(f"{s.file}:{s.line}" for s in rc.sources),
                         rc.verification_status,
                         f"{r.file}:{r.line}" if r.line else r.file,
+                        "; ".join(r.jira),
                     ]
                 )
 
@@ -115,6 +127,7 @@ def to_json(report: CoverageReport) -> Dict:
                 "sources": [dataclasses.asdict(s) for s in rc.sources],
                 "file": rc.requirement.file,
                 "line": rc.requirement.line,
+                "jira": rc.requirement.jira,
             }
             for rc in report.requirements.values()
         ],
@@ -136,7 +149,14 @@ def to_json(report: CoverageReport) -> Dict:
     }
 
 
-def render_markdown(report: CoverageReport, max_rows: int = 30) -> str:
+def _jira_links(keys: List[str], jira_url: str) -> str:
+    if not keys:
+        return ""
+    jira = JiraConfig(url=jira_url)
+    return " (" + ", ".join(f"[{k}]({jira.issue_url(k)})" if jira.url else f"`{k}`" for k in keys) + ")"
+
+
+def render_markdown(report: CoverageReport, max_rows: int = 30, jira_url: str = "") -> str:
     c = report.counts()
     pct = report.test_coverage_pct()
     icon = "✅" if not report.errors else "❌"
@@ -191,7 +211,7 @@ def render_markdown(report: CoverageReport, max_rows: int = 30) -> str:
         lines.append("<details><summary>Uncovered requirements (" + str(len(uncovered)) + ")</summary>")
         lines.append("")
         for rc in uncovered[:max_rows]:
-            lines.append(f"- **{rc.requirement.id}** {rc.requirement.title}")
+            lines.append(f"- **{rc.requirement.id}** {rc.requirement.title}{_jira_links(rc.requirement.jira, jira_url)}")
         if len(uncovered) > max_rows:
             lines.append(f"- … {len(uncovered) - max_rows} more")
         lines.append("")

@@ -24,7 +24,7 @@ def _common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--root", "-r", default=".", help="repository root (default: .)")
     p.add_argument("--junit", action="append", help="JUnit XML glob (repeatable, overrides config)")
     p.add_argument("--out", "-o", help="report output directory (overrides config)")
-    p.add_argument("--format", "-f", action="append", choices=["html", "csv", "json", "md"], help="report formats (repeatable)")
+    p.add_argument("--format", "-f", action="append", choices=["html", "csv", "json", "md", "pdf", "reqif"], help="report formats (repeatable)")
     p.add_argument("--no-report", action="store_true", help="do not write report files")
     p.add_argument("--baseline", help="coverage.json of a previous run to compare against")
     p.add_argument("--base-ref", help="git ref to compare against (analysed in a temporary worktree)")
@@ -109,7 +109,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         written = {}
 
     if not args.quiet:
-        print(render_markdown(report))
+        print(render_markdown(report, jira_url=cfg.jira.url))
         for fmt, p in written.items():
             print(f"[reqcov] wrote {fmt}: {p}")
 
@@ -117,7 +117,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary_path:
         with open(summary_path, "a", encoding="utf-8") as fh:
-            fh.write(render_markdown(report))
+            fh.write(render_markdown(report, jira_url=cfg.jira.url))
     if os.environ.get("GITHUB_ACTIONS") == "true":
         for f in report.findings:
             if f.severity == "info":

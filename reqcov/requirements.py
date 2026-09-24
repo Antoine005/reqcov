@@ -1,24 +1,38 @@
-"""Requirement parsers: Markdown, YAML lists, Doorstop items."""
+"""Requirement parsers: Markdown, YAML lists, Doorstop items (ReqIF lives in reqif.py)."""
 from __future__ import annotations
 
 import os
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import yaml
 
 from .files import read_text
 from .models import Finding, Requirement
 
+if TYPE_CHECKING:  # pragma: no cover
+    from .config import ReqifConfig
+
 VERIFICATION_METHODS = {"test", "analysis", "inspection", "demonstration", "review", "none", "n/a"}
 
 # Metadata keys accepted in Markdown bodies and YAML items (lowercase).
 PARENT_KEYS = ("parent", "parents", "refines", "derived_from", "derived-from", "traces", "trace", "links", "satisfies")
-VERIFICATION_KEYS = ("verification", "verify", "verified_by", "method")
+VERIFICATION_KEYS = ("verification", "verification_method", "verification_type", "verify", "verified_by", "method")
 STATUS_KEYS = ("status",)
 TAG_KEYS = ("tags", "tag", "labels")
 TITLE_KEYS = ("title", "header", "name", "summary")
 TEXT_KEYS = ("text", "description", "statement", "body")
+JIRA_KEYS = ("jira", "jira_issue", "jira_issues", "issue", "issues", "ticket", "tickets")
+
+JIRA_KEY_RE = re.compile(r"\b[A-Z][A-Z0-9_]+-\d+\b")
+
+
+def split_jira(value) -> List[str]:
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        return [k for v in value for k in split_jira(v)]
+    return JIRA_KEY_RE.findall(str(value))
 
 
 def _split_ids(value, id_re: re.Pattern) -> List[str]:
@@ -131,7 +145,7 @@ def parse_markdown(rel: str, text: str, id_re: re.Pattern, findings: List[Findin
 
 
 _INLINE_META_RE = re.compile(
-    r"(?:^|(?<=[.;,)])\s*|\s+)\**(Verification|Verify|Method|Parents?|Refines|Status|Tags?)\**\s*:\s*\**([^.;|]+?)\**\s*(?=$|[.;|])",
+    r"(?:^|(?<=[.;,)])\s*|\s+)\**(Verification|Verify|Method|Parents?|Refines|Status|Tags?|Jira)\**\s*:\s*\**([^.;|]+?)\**\s*(?=$|[.;|])",
     re.IGNORECASE,
 )
 
@@ -151,6 +165,8 @@ def _extract_inline_meta(req: Requirement, id_re: re.Pattern) -> None:
             req.status = val.lower()
         elif key in TAG_KEYS:
             req.tags.extend(t.strip() for t in val.split(",") if t.strip())
+        elif key in JIRA_KEYS:
+            req.jira.extend(split_jira(val))
         return ""
 
     cleaned = _INLINE_META_RE.sub(repl, req.title)
@@ -178,6 +194,9 @@ def _apply_body(req: Requirement, body: List[str], id_re: re.Pattern) -> None:
                 continue
             if key in TAG_KEYS:
                 req.tags.extend(t.strip() for t in val.split(",") if t.strip())
+                continue
+            if key in JIRA_KEYS and split_jira(val):  # "Issue: see note" stays text
+                req.jira.extend(split_jira(val))
                 continue
             if key in TITLE_KEYS and not req.title:
                 req.title = val
@@ -226,6 +245,9 @@ def _req_from_mapping(d: Dict, rel: str, id_re: re.Pattern, default_id: Optional
         if k in low and low[k]:
             v = low[k]
             req.tags.extend([str(x) for x in v] if isinstance(v, list) else [t.strip() for t in str(v).split(",")])
+    for k in JIRA_KEYS:
+        if k in low:
+            req.jira.extend(split_jira(low[k]))
     if not req.title:
         req.title = req.text.splitlines()[0][:120] if req.text else ""
     return req
@@ -285,16 +307,21 @@ def parse_yaml(rel: str, text: str, id_re: re.Pattern, findings: List[Finding]) 
 # ---------------------------------------------------------------------------
 
 
-def load_requirements(root: str, files: List[str], id_pattern: str, findings: List[Finding]) -> Dict[str, Requirement]:
+def load_requirements(
+    root: str, files: List[str], id_pattern: str, findings: List[Finding], reqif_cfg: Optional["ReqifConfig"] = None
+) -> Dict[str, Requirement]:
+    from .reqif import load_reqif  # local import: reqif.py uses the key tables above
+
     id_re = re.compile(id_pattern)
     out: Dict[str, Requirement] = {}
     for rel in files:
-        text = read_text(root, rel)
         ext = os.path.splitext(rel)[1].lower()
-        if ext in (".yml", ".yaml"):
-            reqs = parse_yaml(rel, text, id_re, findings)
+        if ext in (".reqif", ".reqifz"):
+            reqs = load_reqif(root, rel, id_re, findings, reqif_cfg)
+        elif ext in (".yml", ".yaml"):
+            reqs = parse_yaml(rel, read_text(root, rel), id_re, findings)
         else:
-            reqs = parse_markdown(rel, text, id_re, findings)
+            reqs = parse_markdown(rel, read_text(root, rel), id_re, findings)
         for r in reqs:
             if r.id in out:
                 findings.append(
