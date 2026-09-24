@@ -5,7 +5,8 @@ ReqIF is what DOORS, Polarion, Jama, codebeamer, Enterprise Architect... exchang
 
 * every SPEC-OBJECT whose id attribute matches ``id_pattern`` becomes a requirement; objects
   without one (information objects) and chapter headings are skipped. DOORS exports the
-  absolute number as ``ReqIF.ForeignID``: set ``reqif.id_prefix: "SRS-"`` to get ``SRS-12``;
+  absolute number as ``ReqIF.ForeignID``: set ``reqif.id_prefix: "SRS-"`` to get ``SRS-12``, or
+  one prefix per module (SPECIFICATION) when an export holds several: ``{"SRS": "SRS-", ...}``;
 * attributes are matched by LONG-NAME, case-insensitively and without the ``ReqIF.`` prefix:
   ``ReqIF.ForeignID`` / ``ID`` → id, ``ReqIF.Name`` / ``ReqIF.ChapterName`` / ``Title`` → title,
   ``ReqIF.Text`` / ``Description`` → text, and the same ``Verification`` / ``Status`` /
@@ -14,8 +15,9 @@ ReqIF is what DOORS, Polarion, Jama, codebeamer, Enterprise Architect... exchang
   flips it, ``reqif.relation_types`` keeps only some relation types).
 
 Export writes ``requirements.reqif``: one SPECIFICATION per level, parent links as
-SPEC-RELATIONs, and the coverage computed by reqcov as ``reqcov.*`` attributes, so the result of a
-CI run can be imported back into the requirements tool.
+SPEC-RELATIONs, requirements read from ReqIF under their original SPEC-OBJECT IDENTIFIER, and
+the coverage computed by reqcov as ``reqcov.*`` attributes, so the result of a CI run can be
+imported back into the requirements tool.
 """
 from __future__ import annotations
 
@@ -144,7 +146,8 @@ def _object_values(obj: ET.Element, attr_names: Dict[str, str], enum_names: Dict
     return values
 
 
-def _requirement(values: Dict[str, str], obj: ET.Element, id_re: re.Pattern, cfg: Optional["ReqifConfig"]) -> Optional[Requirement]:
+def _requirement(values: Dict[str, str], obj: ET.Element, id_re: re.Pattern, cfg: Optional["ReqifConfig"],
+                 prefix: str = "") -> Optional[Requirement]:
     by_norm: Dict[str, str] = {}
     for k, v in values.items():
         by_norm.setdefault(_norm_name(k), v)
@@ -154,7 +157,6 @@ def _requirement(values: Dict[str, str], obj: ET.Element, id_re: re.Pattern, cfg
 
     rid = ""
     id_attribute = _norm_name(cfg.id_attribute) if cfg is not None and cfg.id_attribute else ""
-    prefix = cfg.id_prefix if cfg is not None else ""
     if id_attribute or prefix:  # explicit mapping: trust it, the id pattern may not apply to the raw value
         raw = by_norm.get(id_attribute, "") if id_attribute else next((by_norm[k] for k in ID_KEYS if by_norm.get(k, "").strip()), "")
         rid = prefix + raw.strip() if raw.strip() else ""
@@ -190,6 +192,29 @@ def _requirement(values: Dict[str, str], obj: ET.Element, id_re: re.Pattern, cfg
     return req
 
 
+def _prefixes(root: ET.Element, cfg: Optional["ReqifConfig"]) -> Dict[str, str]:
+    """SPEC-OBJECT IDENTIFIER → id prefix.
+
+    ``id_prefix`` is one string for every object, or a mapping from SPECIFICATION LONG-NAME (a
+    DOORS module) to its prefix, for exports holding several modules. Objects outside the listed
+    specifications get no prefix and must carry a full id.
+    """
+    if cfg is None or not cfg.id_prefix:
+        return {}
+    if isinstance(cfg.id_prefix, str):
+        return {obj.get("IDENTIFIER", ""): cfg.id_prefix for obj in _iter(root, "SPEC-OBJECT")}
+    by_name = {str(k).strip().lower(): str(v) for k, v in cfg.id_prefix.items()}
+    out: Dict[str, str] = {}
+    for spec in _iter(root, "SPECIFICATION"):
+        prefix = by_name.get((spec.get("LONG-NAME") or "").strip().lower())
+        if prefix is None:
+            continue
+        for ref in _iter(spec, "SPEC-OBJECT-REF"):
+            if ref.text:
+                out.setdefault(ref.text.strip(), prefix)
+    return out
+
+
 def parse_reqif(rel: str, data: bytes, id_re: re.Pattern, findings: List[Finding],
                 cfg: Optional["ReqifConfig"] = None, with_lines: bool = True) -> List[Requirement]:
     try:
@@ -209,12 +234,14 @@ def parse_reqif(rel: str, data: bytes, id_re: re.Pattern, findings: List[Finding
 
     by_ident: Dict[str, Requirement] = {}
     reqs: List[Requirement] = []
+    prefixes = _prefixes(root, cfg)
     for obj in _iter(root, "SPEC-OBJECT"):
         ident = obj.get("IDENTIFIER", "")
-        req = _requirement(_object_values(obj, attr_names, enum_names), obj, id_re, cfg)
+        req = _requirement(_object_values(obj, attr_names, enum_names), obj, id_re, cfg, prefixes.get(ident, ""))
         if req is None:
             continue
         req.file = rel
+        req.reqif_id = ident
         if text:
             pos = text.find(f'IDENTIFIER="{ident}"')
             req.line = text.count("\n", 0, pos) + 1 if pos >= 0 else 0
@@ -325,11 +352,23 @@ def render_reqif(report: CoverageReport, cfg: "Config") -> str:
 
     objects = sub(content, "SPEC-OBJECTS")
     object_ids: Dict[str, str] = {}
+    used = {e.get("IDENTIFIER") for e in doc.iter() if e.get("IDENTIFIER")}
+    # a requirement read from ReqIF keeps its SPEC-OBJECT IDENTIFIER, so the requirements tool can
+    # match it with its own object on import; generated identifiers take the names left over
+    for rc in report.requirements.values():
+        if rc.requirement.reqif_id and rc.requirement.reqif_id not in used:
+            object_ids[rc.requirement.id] = rc.requirement.reqif_id
+            used.add(rc.requirement.reqif_id)
+
+    def fresh(candidate: str) -> str:
+        while candidate in used:  # two ids sanitised to the same NCName, or taken by an original
+            candidate += "_"
+        used.add(candidate)
+        return candidate
+
     for rc in report.requirements.values():
         r = rc.requirement
-        oid = _xml_id("_req_", r.id)
-        while oid in object_ids.values():  # two ids sanitised to the same NCName
-            oid += "_"
+        oid = object_ids.get(r.id) or fresh(_xml_id("_req_", r.id))
         object_ids[r.id] = oid
         obj = ident(objects, "SPEC-OBJECT", oid)
         sub(sub(obj, "TYPE"), "SPEC-OBJECT-TYPE-REF", "_type_requirement")
@@ -371,18 +410,18 @@ def render_reqif(report: CoverageReport, cfg: "Config") -> str:
         for p in rc.requirement.parents:
             if p not in object_ids:
                 continue
-            rel = ident(relations, "SPEC-RELATION", _xml_id("_rel_", f"{rc.requirement.id}__{p}"))
+            rel = ident(relations, "SPEC-RELATION", fresh(_xml_id("_rel_", f"{rc.requirement.id}__{p}")))
             sub(sub(rel, "TYPE"), "SPEC-RELATION-TYPE-REF", "_type_parent")
             sub(sub(rel, "SOURCE"), "SPEC-OBJECT-REF", object_ids[rc.requirement.id])
             sub(sub(rel, "TARGET"), "SPEC-OBJECT-REF", object_ids[p])
 
     specs = sub(content, "SPECIFICATIONS")
     for level, rows in report.by_level().items():
-        spec = ident(specs, "SPECIFICATION", _xml_id("_spec_", level), level)
+        spec = ident(specs, "SPECIFICATION", fresh(_xml_id("_spec_", level)), level)
         sub(sub(spec, "TYPE"), "SPECIFICATION-TYPE-REF", "_type_specification")
         children = sub(spec, "CHILDREN")
         for rc in rows:
-            h = ident(children, "SPEC-HIERARCHY", "_h" + object_ids[rc.requirement.id])
+            h = ident(children, "SPEC-HIERARCHY", fresh("_h" + object_ids[rc.requirement.id]))
             sub(sub(h, "OBJECT"), "SPEC-OBJECT-REF", object_ids[rc.requirement.id])
 
     if hasattr(ET, "indent"):

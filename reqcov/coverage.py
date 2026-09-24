@@ -97,12 +97,21 @@ def evaluate_rules(report: CoverageReport, cfg: Config) -> None:
     rules = cfg.rules
     f = report.findings
 
+    # tests often cite the Jira issue instead of the requirement: say which ids to use
+    by_issue: Dict[str, List[str]] = {}
+    for rc in report.requirements.values():
+        for key in rc.requirement.jira:
+            by_issue.setdefault(key, []).append(rc.requirement.id)
+
     for ref in report.unknown_ids:
+        hint = ""
+        if ref.req_id in by_issue:
+            hint = f" (it is a Jira issue: reference its requirement(s) {', '.join(by_issue[ref.req_id])} instead)"
         f.append(
             Finding(
                 "error" if rules.fail_on_unknown_ids else "warning",
                 "UNKNOWN_ID",
-                f"{ref.req_id} referenced by {ref.symbol or 'marker'} but not defined",
+                f"{ref.req_id} referenced by {ref.symbol or 'marker'} but not defined{hint}",
                 ref.file,
                 ref.line,
             )

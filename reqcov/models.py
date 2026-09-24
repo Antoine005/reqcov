@@ -21,6 +21,7 @@ class Requirement:
     file: str = ""
     line: int = 0
     level: str = ""  # derived from id prefix, e.g. "SYS", "SRS"
+    reqif_id: str = ""  # SPEC-OBJECT IDENTIFIER when read from ReqIF, reused on export
 
     def __post_init__(self) -> None:
         if not self.level and "-" in self.id:

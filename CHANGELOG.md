@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+- ReqIF: `reqif.id_prefix` also takes a mapping `{specification name: prefix}`, so a DOORS
+  export holding several modules (each numbered from 1) gives `SYS-1`, `SRS-1`...
+- ReqIF export keeps the SPEC-OBJECT identifiers of requirements that were read from ReqIF,
+  so the requirements tool can match its own objects when importing the coverage back.
+- `UNKNOWN_ID` on a Jira key (`@req THERM-42`) names the requirements linked to that issue.
+- `coverage.json` carries `"schema": 1`; its format and compatibility rules are documented in
+  `docs/coverage-json.md`. `--baseline` refuses a file written with a newer schema.
+- README: "Adopting reqcov on an existing project" (DOORS + Jira + existing tests).
+
 ## 0.3.0 — 2026-09-24
 - ReqIF import: `.reqif` files and `.reqifz` archives from DOORS, Polarion, codebeamer, Jama,
   Enterprise Architect... are read like any other requirement file. Attributes are matched by

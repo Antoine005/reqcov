@@ -65,7 +65,19 @@ r/medicaldevices, r/QualityAssurance.
   reporté sans date.
 - 0.3 (livrée) : ReqIF import/export ; liens Jira ; export PDF (non signé — la signature et
   l'horodatage restent dans l'offre Cloud).
-- 0.4 : reqcov Cloud (historique, badges, multi-dépôts) — première offre payante.
+- 0.4 : adoption sur un projet existant (DOORS + Jira + tests existants) : export ReqIF
+  multi-modules, identifiants ReqIF conservés à l'export, aide sur les clés Jira citées comme
+  exigences, format `coverage.json` versionné, guide d'adoption progressive (cliquet).
+- 0.5 : reqcov Cloud (historique, badges, multi-dépôts) — première offre payante, une fois les
+  critères de la section 9 atteints (100 étoiles, 3 dépôts externes).
+
+Écarté volontairement, pour garder l'outil ouvert et facile à adopter :
+- appels à l'API Jira depuis la CI (jeton, réseau, différences Cloud / Data Center, résultat non
+  reproductible depuis le commit) ;
+- marqueurs posés automatiquement ou clés Jira acceptées comme marqueurs (un lien deviné ou
+  indirect gonfle la couverture, ce qu'un auditeur ne doit jamais trouver) ;
+- toute dépendance de l'outil libre envers le Cloud : le Cloud consomme `coverage.json`, dont le
+  format est versionné et documenté.
 
 ## 9. Critères de succès
 
