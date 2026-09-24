@@ -8,7 +8,7 @@ variable is set (a repository variable in the Pages workflow), the Search
 Console verification meta tag.
 
 Each sub-directory of <site-dir> is one example report (index.html, matrix.csv,
-coverage.json, summary.md). The numbers shown are read from coverage.json, so
+coverage.json, summary.md, matrix.pdf, requirements.reqif). The numbers shown are read from coverage.json, so
 the page can never drift from the reports it links to.
 """
 from __future__ import annotations
@@ -117,7 +117,9 @@ def card(site: pathlib.Path, slug: str, lang: str, blurb: str) -> str:
   <p class="files">Same run, other formats:
     <a href="{slug}/matrix.csv">matrix.csv</a> &middot;
     <a href="{slug}/coverage.json">coverage.json</a> &middot;
-    <a href="{slug}/summary.md">summary.md</a> (the pull-request comment)
+    <a href="{slug}/summary.md">summary.md</a> (the pull-request comment) &middot;
+    <a href="{slug}/matrix.pdf">matrix.pdf</a> (audit document) &middot;
+    <a href="{slug}/requirements.reqif">requirements.reqif</a> (back to DOORS / Polarion)
   </p>"""
 
 

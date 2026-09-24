@@ -34,10 +34,26 @@ class ReportConfig:
 
 
 @dataclass
+class JiraConfig:
+    url: str = ""  # e.g. https://acme.atlassian.net — issue keys become links to {url}/browse/KEY
+
+    def issue_url(self, key: str) -> str:
+        return f"{self.url.rstrip('/')}/browse/{key}" if self.url else ""
+
+
+@dataclass
+class ReqifConfig:
+    id_attribute: str = ""  # attribute holding the requirement id (default: ReqIF.ForeignID, ID, ...)
+    id_prefix: str = ""  # prepended to the id attribute: DOORS exports the absolute number, "SRS-" + "12"
+    parent_end: str = "target"  # which end of a SPEC-RELATION is the parent: target | source
+    relation_types: List[str] = field(default_factory=list)  # relation LONG-NAMEs that mean "parent" (empty: all)
+
+
+@dataclass
 class Config:
     root: str = "."
     id_pattern: str = DEFAULT_ID_PATTERN
-    requirements: List[str] = field(default_factory=lambda: ["docs/requirements/**/*.md", "docs/requirements/**/*.yml"])
+    requirements: List[str] = field(default_factory=lambda: ["docs/requirements/**/*.md", "docs/requirements/**/*.yml", "docs/requirements/**/*.reqif"])
     sources: List[str] = field(default_factory=lambda: ["src/**/*"])
     tests: List[str] = field(default_factory=lambda: ["tests/**/*", "test/**/*"])
     junit: List[str] = field(default_factory=list)
@@ -45,6 +61,8 @@ class Config:
     markers: List[str] = field(default_factory=lambda: ["req", "requirement", "requirements", "implements", "verifies", "satisfies", "trace", "traces"])
     rules: Rules = field(default_factory=Rules)
     report: ReportConfig = field(default_factory=ReportConfig)
+    jira: JiraConfig = field(default_factory=JiraConfig)
+    reqif: ReqifConfig = field(default_factory=ReqifConfig)
 
     @staticmethod
     def load(path: Optional[str] = None, root: Optional[str] = None) -> "Config":
@@ -82,6 +100,18 @@ class Config:
         for k, v in rep.items():
             if hasattr(cfg.report, k):
                 setattr(cfg.report, k, v)
+        jira = data.get("jira") or {}
+        if isinstance(jira, str):
+            jira = {"url": jira}
+        for k, v in jira.items():
+            if hasattr(cfg.jira, k):
+                setattr(cfg.jira, k, v)
+        reqif = data.get("reqif") or {}
+        for k, v in reqif.items():
+            if hasattr(cfg.reqif, k):
+                setattr(cfg.reqif, k, v)
+        if cfg.reqif.parent_end not in ("target", "source"):
+            raise ValueError(f"reqif.parent_end must be 'target' or 'source', not {cfg.reqif.parent_end!r}")
         return cfg
 
 
@@ -91,10 +121,11 @@ version: 1
 # Regex for requirement identifiers. Level = everything before the last dash (SYS, SRS, HLR, LLR...).
 id_pattern: "[A-Z][A-Z0-9_]*-\\\\d+"
 
-# Where requirements live (Markdown headings, YAML lists, or Doorstop items).
+# Where requirements live (Markdown headings, YAML lists, Doorstop items, ReqIF exports).
 requirements:
   - docs/requirements/**/*.md
   - docs/requirements/**/*.yml
+  - docs/requirements/**/*.reqif
 
 # Files scanned for `@implements REQ-1` style markers (traces to code).
 sources:
@@ -118,6 +149,10 @@ rules:
 
 report:
   out_dir: reqcov-report
-  formats: [html, csv, json, md]
+  formats: [html, csv, json, md]  # also: pdf (audit matrix), reqif (round-trip to DOORS, Polarion...)
   title: "Software Requirements Traceability"
+
+# Optional: requirement metadata `Jira: PROJ-12` becomes a link to the issue.
+# jira:
+#   url: https://your-company.atlassian.net
 """

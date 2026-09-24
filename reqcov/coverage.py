@@ -27,7 +27,7 @@ def analyze(cfg: Config, evaluate: bool = True) -> CoverageReport:
     req_files = find_files(root, cfg.requirements, cfg.exclude)
     if not req_files:
         findings.append(Finding("error", "NO_REQUIREMENTS", f"no requirement files matched {cfg.requirements}"))
-    requirements = load_requirements(root, req_files, cfg.id_pattern, findings)
+    requirements = load_requirements(root, req_files, cfg.id_pattern, findings, cfg.reqif)
 
     # don't scan requirement files themselves as sources/tests
     src_files = [f for f in find_files(root, cfg.sources, cfg.exclude) if f not in req_files]

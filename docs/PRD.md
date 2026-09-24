@@ -61,8 +61,10 @@ r/medicaldevices, r/QualityAssurance.
 
 ## 8. Roadmap
 
-- 0.2 : delta de couverture vs branche de base ; StrictDoc `.sdoc` ; template GitLab CI.
-- 0.3 : ReqIF import/export ; liens Jira ; export PDF.
+- 0.2 (livrée) : delta de couverture vs branche de base ; template GitLab CI. StrictDoc `.sdoc`
+  reporté sans date.
+- 0.3 (livrée) : ReqIF import/export ; liens Jira ; export PDF (non signé — la signature et
+  l'horodatage restent dans l'offre Cloud).
 - 0.4 : reqcov Cloud (historique, badges, multi-dépôts) — première offre payante.
 
 ## 9. Critères de succès

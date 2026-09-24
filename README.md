@@ -1,7 +1,7 @@
 # reqcov — requirements coverage for pull requests
 
 **Codecov, but for your requirements.** reqcov reads the requirements you already keep in your
-repository (Markdown, YAML or Doorstop), finds the tests and code that reference them, merges
+repository (Markdown, YAML, Doorstop, or a ReqIF export from DOORS / Polarion), finds the tests and code that reference them, merges
 the JUnit results of your test run, and tells every pull request which requirements are
 **uncovered**, **covered**, **verified** or **failing** — then writes the traceability matrix an
 auditor asks for (IEC 62304, ISO 26262, EN 50128, DO-178C, IEC 61508, ECSS).
@@ -53,7 +53,8 @@ On a pull request the same run becomes one sticky comment:
    Verification: test
    ```
 
-   YAML lists and [Doorstop](https://github.com/doorstop-dev/doorstop) items are also read.
+   YAML lists, [Doorstop](https://github.com/doorstop-dev/doorstop) items and
+   [ReqIF](#reqif-doors-polarion-codebeamer) exports are also read.
 
 2. **Tests and code** reference ids with a marker — any language, in a comment, a decorator, a
    macro:
@@ -93,7 +94,8 @@ open reqcov-report/index.html
 ```
 
 `reqcov-report/` contains `index.html` (interactive matrix), `matrix.csv` (auditor-friendly),
-`coverage.json` (machine readable) and `summary.md` (the PR comment).
+`coverage.json` (machine readable) and `summary.md` (the PR comment). Add `pdf` and `reqif` to
+`report.formats` (or pass `-f pdf -f reqif`) for `matrix.pdf` and `requirements.reqif`.
 
 ## GitHub Action
 
@@ -155,6 +157,53 @@ requirements:
     paths: [reqcov-report/]
 ```
 
+## ReqIF (DOORS, Polarion, codebeamer...)
+
+Point `requirements` at a `.reqif` file or a `.reqifz` archive exported from your requirements
+tool; it is read next to your Markdown or YAML files.
+
+```yaml
+requirements: [docs/requirements/**/*.md, exports/SRS.reqifz]
+reqif:
+  id_prefix: "SRS-"          # DOORS exports the absolute number: "SRS-" + "12" → SRS-12
+  id_attribute: ""           # attribute holding the id (default: ReqIF.ForeignID, ID, ...)
+  relation_types: []         # link types that mean "parent" (default: all)
+  parent_end: target         # DOORS "satisfies" links point from child (source) to parent (target)
+```
+
+Attributes are matched by name, case-insensitively: `ReqIF.Name` / `ReqIF.ChapterName` → title,
+`ReqIF.Text` → text, and the same `Verification` / `Status` / `Tags` / `Jira` fields as below.
+Chapter headings are skipped. Enumerations and XHTML text are resolved.
+
+The other way round, `-f reqif` writes `requirements.reqif` (valid against the OMG ReqIF
+schema): the requirements with their parent relations and the coverage of the run as `reqcov.*`
+attributes (`reqcov.Coverage`, `reqcov.Tests`, `reqcov.Results`...), ready to import back into
+the tool your quality team works in.
+
+## PDF for the audit package
+
+`-f pdf` writes `matrix.pdf`: the summary, coverage by level, findings, the change against the
+base branch, a sign-off table and the full matrix with its header repeated on every page — the
+document that goes into the DHF or the safety case. No extra dependency: it is generated with
+the Python standard library.
+
+## Jira links
+
+```markdown
+## SRS-11 — Over-temperature cut-off
+Parent: SYS-2
+Jira: THERM-42, THERM-57
+```
+
+```yaml
+jira:
+  url: https://your-company.atlassian.net
+```
+
+The keys become links in the HTML report and the PR comment, and are exported in `matrix.csv`,
+`coverage.json`, the PDF and the ReqIF export. `Issue:` and `Ticket:` work too; without
+`jira.url` the keys are shown as plain text.
+
 ## Configuration (`reqcov.yml`)
 
 ```yaml
@@ -176,8 +225,10 @@ rules:
   fail_on_coverage_drop: false  # with --base-ref: regression = error
 report:
   out_dir: reqcov-report
-  formats: [html, csv, json, md]
+  formats: [html, csv, json, md]  # + pdf, reqif
   title: "Software Requirements Traceability"
+jira:
+  url: https://your-company.atlassian.net
 ```
 
 ### Requirement metadata
@@ -188,6 +239,7 @@ report:
 | verification | `Verification: test` | `verification` | `test` (default), `analysis`, `inspection`, `demonstration`, `none` |
 | status | `Status: draft` | `status` (Doorstop: `active: false` → obsolete) | free text; `obsolete` is ignored by rules |
 | tags | `Tags: safety, ui` | `tags` | list |
+| jira | `Jira: PROJ-12, PROJ-14` | `jira` / `issues` / `tickets` | issue keys |
 
 Only requirements with `verification: test` count toward test coverage; the others are shown
 as `n/a` in the matrix so the auditor still sees them.
@@ -209,8 +261,8 @@ installing anything.
 `0.1` — CLI, Markdown/YAML/Doorstop input, marker scanning, JUnit merge, HTML/CSV/JSON/MD
 reports, GitHub Action with sticky PR comment.
 `0.2` — coverage delta against the base branch, GitLab CI template.
-Planned: StrictDoc and ReqIF input, Jira issue links, signed PDF export for audit packages,
-hosted history and badges.
+`0.3` — ReqIF import and export, Jira issue links, PDF export.
+Planned: hosted history and badges, signed and timestamped PDF, StrictDoc input.
 
 ## Read more
 
