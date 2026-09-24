@@ -210,3 +210,96 @@ def test_jira_links_in_reports(tmp_path):
     assert "<code>ABC-7</code>" in render_html(rep, cfg)
     assert to_json(rep)["requirements"][0]["jira"] == ["ABC-7"]
     assert Config.from_dict({"jira": "https://x.example"}).jira.issue_url("A-1") == "https://x.example/browse/A-1"
+
+
+# --------------------------------------------------------------------------- 0.4: brownfield adoption
+
+def _two_module_export() -> bytes:
+    """Two DOORS modules in one exchange file, numbered from 1 each, one link SRS 1 -> SYS 1."""
+    def obj(ident, fid, text):
+        return (
+            f'<SPEC-OBJECT IDENTIFIER="{ident}" LAST-CHANGE="2026-01-01T00:00:00Z"><TYPE><SPEC-OBJECT-TYPE-REF>t</SPEC-OBJECT-TYPE-REF></TYPE><VALUES>'
+            f'<ATTRIBUTE-VALUE-STRING THE-VALUE="{fid}"><DEFINITION><ATTRIBUTE-DEFINITION-STRING-REF>a_id</ATTRIBUTE-DEFINITION-STRING-REF></DEFINITION></ATTRIBUTE-VALUE-STRING>'
+            f'<ATTRIBUTE-VALUE-STRING THE-VALUE="{text}"><DEFINITION><ATTRIBUTE-DEFINITION-STRING-REF>a_text</ATTRIBUTE-DEFINITION-STRING-REF></DEFINITION></ATTRIBUTE-VALUE-STRING>'
+            "</VALUES></SPEC-OBJECT>"
+        )
+
+    def spec(name, *refs):
+        children = "".join(
+            f'<SPEC-HIERARCHY IDENTIFIER="h_{r}" LAST-CHANGE="2026-01-01T00:00:00Z"><OBJECT><SPEC-OBJECT-REF>{r}</SPEC-OBJECT-REF></OBJECT></SPEC-HIERARCHY>'
+            for r in refs
+        )
+        return f'<SPECIFICATION IDENTIFIER="s_{name}" LONG-NAME="{name}" LAST-CHANGE="2026-01-01T00:00:00Z"><CHILDREN>{children}</CHILDREN></SPECIFICATION>'
+
+    return (
+        '<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd"><CORE-CONTENT><REQ-IF-CONTENT>'
+        '<SPEC-TYPES><SPEC-OBJECT-TYPE IDENTIFIER="t" LAST-CHANGE="2026-01-01T00:00:00Z"><SPEC-ATTRIBUTES>'
+        '<ATTRIBUTE-DEFINITION-STRING IDENTIFIER="a_id" LONG-NAME="ReqIF.ForeignID" LAST-CHANGE="2026-01-01T00:00:00Z"/>'
+        '<ATTRIBUTE-DEFINITION-STRING IDENTIFIER="a_text" LONG-NAME="ReqIF.Text" LAST-CHANGE="2026-01-01T00:00:00Z"/>'
+        "</SPEC-ATTRIBUTES></SPEC-OBJECT-TYPE></SPEC-TYPES>"
+        "<SPEC-OBJECTS>"
+        + obj("sys1", "1", "System does X")
+        + obj("srs1", "1", "Software does X")
+        + obj("srs2", "2", "Software logs X")
+        + obj("loose", "7", "Outside any module")
+        + "</SPEC-OBJECTS><SPEC-RELATIONS>"
+        '<SPEC-RELATION IDENTIFIER="r1" LAST-CHANGE="2026-01-01T00:00:00Z"><SOURCE><SPEC-OBJECT-REF>srs1</SPEC-OBJECT-REF></SOURCE>'
+        "<TARGET><SPEC-OBJECT-REF>sys1</SPEC-OBJECT-REF></TARGET></SPEC-RELATION>"
+        "</SPEC-RELATIONS><SPECIFICATIONS>"
+        + spec("System Requirements", "sys1")
+        + spec("Software Requirements", "srs1", "srs2")
+        + "</SPECIFICATIONS></REQ-IF-CONTENT></CORE-CONTENT></REQ-IF>"
+    ).encode()
+
+
+def test_reqif_prefix_per_module():
+    cfg = ReqifConfig(id_prefix={"system requirements": "SYS-", "Software Requirements": "SRS-"})
+    findings = []
+    reqs = {r.id: r for r in parse_reqif("x.reqif", _two_module_export(), ID, findings, cfg)}
+    assert not findings
+    # the same absolute number 1 in two modules gives two requirements; an object outside the
+    # mapped modules has only a numeric id, which does not match id_pattern: skipped
+    assert set(reqs) == {"SYS-1", "SRS-1", "SRS-2"}
+    assert reqs["SRS-1"].parents == ["SYS-1"] and reqs["SRS-1"].level == "SRS"
+    assert reqs["SRS-2"].reqif_id == "srs2"
+    with pytest.raises(ValueError):
+        Config.from_dict({"reqif": {"id_prefix": ["SRS-"]}})
+    assert Config.from_dict({"reqif": {"id_prefix": {"SRS": "SRS-"}}}).reqif.id_prefix == {"SRS": "SRS-"}
+
+
+def test_reqif_export_keeps_original_identifiers(tmp_path):
+    shutil.copy(os.path.join(FIXTURES, "doors_export.reqif"), tmp_path)
+    cfg = _cfg(str(tmp_path), requirements=["*.reqif"], tests=[], sources=[], reqif={"id_prefix": "SRS-"}, rules={"min_test_coverage": 0})
+    rep = analyze(cfg)
+    xml = render_reqif(rep, cfg)
+    # DOORS can match its own objects: SPEC-OBJECT identifiers are the ones it exported
+    assert re.findall(r'<SPEC-OBJECT IDENTIFIER="([^"]+)"', xml) == ["_o2", "_o3", "_o4"]
+    assert '<SPEC-OBJECT-REF>_o3</SPEC-OBJECT-REF>' in xml
+    idents = re.findall(r'IDENTIFIER="([^"]+)"', xml)
+    assert len(idents) == len(set(idents))  # xsd:ID: unique across the document
+    back = {r.id: r for r in parse_reqif("x.reqif", xml.encode(), ID, [])}
+    assert set(back) == {"SRS-2", "SRS-3", "SRS-4"} and back["SRS-3"].parents == ["SRS-2"]
+
+
+def test_unknown_id_that_is_a_jira_issue_names_its_requirements(tmp_path):
+    (tmp_path / "reqs.md").write_text("## R-1 — a\nJira: ABC-7\n## R-2 — b\nJira: ABC-7\n")
+    (tmp_path / "test_x.py").write_text("# @req ABC-7\ndef test_x():\n    pass\n")
+    rep = analyze(_cfg(str(tmp_path), requirements=["reqs.md"], tests=["test_*.py"], sources=[]))
+    [f] = [f for f in rep.errors if f.code == "UNKNOWN_ID"]
+    assert "it is a Jira issue: reference its requirement(s) R-1, R-2 instead" in f.message
+
+
+def test_coverage_json_schema_and_newer_baseline_refused(tmp_path):
+    from reqcov.delta import load_baseline
+
+    root = os.path.join(EXAMPLES, "googletest")
+    data = to_json(analyze(_cfg(root)))
+    assert data["schema"] == 1
+    old = dict(data)
+    del old["schema"]  # written by reqcov < 0.4
+    (tmp_path / "old.json").write_text(json.dumps(old))
+    assert load_baseline(str(tmp_path / "old.json"))["summary"] == data["summary"]
+    data["schema"] = 2
+    (tmp_path / "new.json").write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="newer reqcov"):
+        load_baseline(str(tmp_path / "new.json"))

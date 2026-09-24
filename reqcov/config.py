@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
 
@@ -44,7 +44,9 @@ class JiraConfig:
 @dataclass
 class ReqifConfig:
     id_attribute: str = ""  # attribute holding the requirement id (default: ReqIF.ForeignID, ID, ...)
-    id_prefix: str = ""  # prepended to the id attribute: DOORS exports the absolute number, "SRS-" + "12"
+    # prepended to the id attribute (DOORS exports the absolute number: "SRS-" + "12"); a mapping
+    # {specification LONG-NAME: prefix} gives each module of a multi-module export its own
+    id_prefix: Union[str, Dict[str, str]] = ""
     parent_end: str = "target"  # which end of a SPEC-RELATION is the parent: target | source
     relation_types: List[str] = field(default_factory=list)  # relation LONG-NAMEs that mean "parent" (empty: all)
 
@@ -110,6 +112,8 @@ class Config:
         for k, v in reqif.items():
             if hasattr(cfg.reqif, k):
                 setattr(cfg.reqif, k, v)
+        if not isinstance(cfg.reqif.id_prefix, (str, dict)):
+            raise ValueError("reqif.id_prefix must be a string or a mapping {specification name: prefix}")
         if cfg.reqif.parent_end not in ("target", "source"):
             raise ValueError(f"reqif.parent_end must be 'target' or 'source', not {cfg.reqif.parent_end!r}")
         return cfg

@@ -94,7 +94,8 @@ open reqcov-report/index.html
 ```
 
 `reqcov-report/` contains `index.html` (interactive matrix), `matrix.csv` (auditor-friendly),
-`coverage.json` (machine readable) and `summary.md` (the PR comment). Add `pdf` and `reqif` to
+`coverage.json` (machine readable, [versioned format](docs/coverage-json.md)) and `summary.md`
+(the PR comment). Add `pdf` and `reqif` to
 `report.formats` (or pass `-f pdf -f reqif`) for `matrix.pdf` and `requirements.reqif`.
 
 ## GitHub Action
@@ -166,6 +167,8 @@ tool; it is read next to your Markdown or YAML files.
 requirements: [docs/requirements/**/*.md, exports/SRS.reqifz]
 reqif:
   id_prefix: "SRS-"          # DOORS exports the absolute number: "SRS-" + "12" → SRS-12
+  # several modules in one export: one prefix per module (SPECIFICATION name)
+  # id_prefix: {"System Requirements": "SYS-", "Software Requirements": "SRS-"}
   id_attribute: ""           # attribute holding the id (default: ReqIF.ForeignID, ID, ...)
   relation_types: []         # link types that mean "parent" (default: all)
   parent_end: target         # DOORS "satisfies" links point from child (source) to parent (target)
@@ -178,7 +181,9 @@ Chapter headings are skipped. Enumerations and XHTML text are resolved.
 The other way round, `-f reqif` writes `requirements.reqif` (valid against the OMG ReqIF
 schema): the requirements with their parent relations and the coverage of the run as `reqcov.*`
 attributes (`reqcov.Coverage`, `reqcov.Tests`, `reqcov.Results`...), ready to import back into
-the tool your quality team works in.
+the tool your quality team works in. Requirements that came from a ReqIF file keep their original
+object identifiers, so the tool can match them with its own objects; how an import updates
+existing objects is up to that tool's import settings.
 
 ## PDF for the audit package
 
@@ -203,6 +208,31 @@ jira:
 The keys become links in the HTML report and the PR comment, and are exported in `matrix.csv`,
 `coverage.json`, the PDF and the ReqIF export. `Issue:` and `Ticket:` work too; without
 `jira.url` the keys are shown as plain text.
+
+## Adopting reqcov on an existing project
+
+Requirements in DOORS, issues in Jira, years of tests that reference neither: start by
+measuring, then stop regressions, then raise the bar.
+
+1. **Read the requirements where they are.** Export the DOORS modules as ReqIF, commit the
+   `.reqifz`, point `requirements` at it and set `reqif.id_prefix`. `reqcov list` shows what
+   was read. Keep the Jira key as a DOORS attribute (`Jira`) to get the links in every report.
+2. **Report without blocking.** Run the Action with `fail-on-error: "false"`, or:
+   ```yaml
+   rules:
+     min_test_coverage: 0          # start from what exists
+     fail_on_coverage_drop: true   # ratchet: a pull request may not lower coverage
+     fail_on_unknown_ids: true     # a mistyped marker fails at once
+   ```
+   On pull requests the Action compares with the base branch (on by default), so from there on
+   coverage cannot go down.
+3. **Mark tests where it matters first**: safety requirements, then the code that changes most.
+   A test that cites a Jira key instead of a requirement id (`@req THERM-42`) is reported as an
+   unknown id that names the requirements linked to that issue.
+4. **Raise `min_test_coverage`** level by level once the ratchet has done its work.
+
+Nothing here writes to DOORS or Jira, and no step needs a server or a token: everything is
+computed from the commit.
 
 ## Configuration (`reqcov.yml`)
 

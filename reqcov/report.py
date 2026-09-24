@@ -98,8 +98,14 @@ def write_csv(report: CoverageReport, path: str) -> None:
                 )
 
 
+# coverage.json format version (docs/coverage-json.md): adding keys keeps it, anything a reader
+# could trip on (renaming, removing, changing a meaning) bumps it
+JSON_SCHEMA = 1
+
+
 def to_json(report: CoverageReport) -> Dict:
     return {
+        "schema": JSON_SCHEMA,
         "reqcov": __version__,
         "generated_at": report.generated_at,
         "git_sha": report.git_sha,
