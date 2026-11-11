@@ -332,6 +332,11 @@ Issues and pull requests are welcome. `pip install -e ".[dev]"`, then `python -m
 the projects under `examples/` are the integration fixtures. The only runtime dependencies are
 PyYAML and Jinja2, and the aim is to keep it that way.
 
+reqcov is maintained on personal time. If it saves your team work, you can support it through
+[GitHub Sponsors](https://github.com/sponsors/Antoine005). It stays free and MIT either way, and
+sponsoring buys no priority or support: issues and pull requests are handled the same for
+everyone.
+
 ## License
 
 MIT.
