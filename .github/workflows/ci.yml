@@ -7,10 +7,17 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.9", "3.12"]
+        include:
+          # Python 3.9 is the oldest version reqcov supports. Ubuntu 26.04
+          # (ubuntu-latest since Nov 2026) has no 3.9 build, so test it on 24.04.
+          - python-version: "3.9"
+            os: ubuntu-24.04
+          - python-version: "3.12"
+            os: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
