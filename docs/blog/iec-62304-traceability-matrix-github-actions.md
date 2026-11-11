@@ -133,5 +133,5 @@ as the CI layer.
 - `pip install reqcov`
 - Three worked examples: pytest, Ceedling/Unity (C), GoogleTest (C++)
 
-If your team would use hosted history, coverage badges and a signed PDF for the audit
-package, tell me: https://tally.so/r/Me4K28.
+reqcov is free and open source (MIT). Questions, gaps and ideas are welcome in the issues:
+https://github.com/Antoine005/reqcov/issues.
