@@ -42,16 +42,10 @@ commencer, tout est reproductible et versionné avec le commit — ce qu'un audi
 
 ## 6. Modèle économique
 
-Open core. Le CLI et l'Action restent MIT (adoption, SEO, crédibilité). La valeur payante est
-« reqcov Cloud » : historique et delta de couverture par PR, badges, tableau multi-dépôts,
-export PDF signé et horodaté pour le dossier d'audit, intégration Jira/GitLab.
-
-- Gratuit : dépôts publics.
-- Team 29 €/mois : jusqu'à 5 dépôts privés, historique 12 mois, PDF.
-- Compliance 99 €/mois : dépôts illimités, ReqIF/Jira, baselines, rapport signé.
-
-Objectif 12 mois : 20–40 équipes payantes (800–2 000 €/mois). Facturation via GitHub
-Marketplace (pas de Stripe à gérer au départ).
+Aucun. reqcov est un outil libre (MIT), sans offre payante : le CLI et l'Action sont le produit
+entier. La piste « reqcov Cloud » (open core avec historique hébergé, badges, PDF signé, offres
+Team/Compliance) a été abandonnée en septembre 2026. Les fonctions qui étaient réservées à cette
+offre (historique, baselines) sont, si elles se font, faites dans l'outil libre.
 
 ## 7. Distribution
 
@@ -63,24 +57,23 @@ r/medicaldevices, r/QualityAssurance.
 
 - 0.2 (livrée) : delta de couverture vs branche de base ; template GitLab CI. StrictDoc `.sdoc`
   reporté sans date.
-- 0.3 (livrée) : ReqIF import/export ; liens Jira ; export PDF (non signé — la signature et
-  l'horodatage restent dans l'offre Cloud).
+- 0.3 (livrée) : ReqIF import/export ; liens Jira ; export PDF (non signé).
 - 0.3.1 : adoption sur un projet existant (DOORS + Jira + tests existants) : export ReqIF
   multi-modules, identifiants ReqIF conservés à l'export, aide sur les clés Jira citées comme
   exigences, format `coverage.json` versionné, guide d'adoption progressive (cliquet).
-- 0.4 : reqcov Cloud (historique, badges, multi-dépôts) — première offre payante, une fois les
-  critères de la section 9 atteints (100 étoiles, 3 dépôts externes).
+- En discussion (issue #4) : exigences par périmètre (une spec par feature, façon GitHub Spec
+  Kit, avec des identifiants `FR-001` qui se répètent) et détection de dérive (une exigence dont
+  le texte change alors que ses tests restent verts), dans l'outil libre.
 
 Écarté volontairement, pour garder l'outil ouvert et facile à adopter :
 - appels à l'API Jira depuis la CI (jeton, réseau, différences Cloud / Data Center, résultat non
   reproductible depuis le commit) ;
 - marqueurs posés automatiquement ou clés Jira acceptées comme marqueurs (un lien deviné ou
   indirect gonfle la couverture, ce qu'un auditeur ne doit jamais trouver) ;
-- toute dépendance de l'outil libre envers le Cloud : le Cloud consomme `coverage.json`, dont le
-  format est versionné et documenté.
+- toute dépendance envers un service hébergé : les outils tiers consomment `coverage.json`, dont
+  le format est versionné et documenté.
 
 ## 9. Critères de succès
 
-- 30 inscrits sur la liste d'attente ou 5 « je paierais » avant 0.2.
-- 100 étoiles GitHub et 3 dépôts externes utilisant l'Action avant 0.4.
-- Arrêt si < 5 équipes payantes 6 mois après 0.4.
+- 100 étoiles GitHub et 3 dépôts externes utilisant l'Action.
+- Des contributions externes (issues, pull requests) traitées dans la semaine.
