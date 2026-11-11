@@ -1,7 +1,7 @@
 # `coverage.json` — format
 
 `coverage.json` is reqcov's machine-readable output and the stable interface for anything built
-on top of it: the coverage delta (`--baseline`), dashboards, scripts, a hosted history. It is
+on top of it: the coverage delta (`--baseline`), dashboards, scripts, history tracking. It is
 versioned by its top-level `schema` number.
 
 **Compatibility promise.** Within one `schema` version, keys are only ever *added*. Renaming or

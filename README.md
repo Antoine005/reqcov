@@ -294,7 +294,8 @@ reports, GitHub Action with sticky PR comment.
 `0.3` — ReqIF import and export, Jira issue links, PDF export.
 `0.3.1` — adoption on existing projects: multi-module DOORS exports, ReqIF identifiers kept on
 export, versioned `coverage.json`.
-Planned: hosted history and badges, signed and timestamped PDF, StrictDoc input.
+Under discussion ([#4](https://github.com/Antoine005/reqcov/issues/4)): per-spec requirement
+scopes (GitHub Spec Kit layouts) and requirement drift detection. Planned: StrictDoc input.
 
 ## Read more
 
