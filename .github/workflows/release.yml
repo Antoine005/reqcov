@@ -1,8 +1,9 @@
 name: Release
 
 # Publishes to PyPI via trusted publishing when a version tag is pushed,
-# then creates the GitHub Release and moves the floating `v0` major tag
-# so `uses: Antoine005/reqcov@v0` follows the latest 0.x.
+# then creates the GitHub Release (or completes the one that created the tag)
+# and moves the floating `v0` major tag so `uses: Antoine005/reqcov@v0`
+# follows the latest 0.x.
 # One-time setup: on pypi.org, add a "trusted publisher" for this repo
 # (workflow file: release.yml, environment: pypi).
 on:
@@ -51,7 +52,15 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" dist/* --title "${{ github.ref_name }}" --notes-file CHANGELOG.md
+        # The tag may have been created by publishing a release in the GitHub UI:
+        # the release then already exists and only needs the built files.
+        run: |
+          TAG="${{ github.ref_name }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "$TAG" --notes-file CHANGELOG.md
+          fi
       - name: Move floating major tag
         run: |
           MAJOR="${GITHUB_REF_NAME%%.*}"
