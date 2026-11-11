@@ -1,30 +1,30 @@
 # reqcov — requirements coverage for pull requests
 
 **Codecov, but for your requirements.** reqcov reads the requirements you already keep in your
-repository (Markdown, YAML, Doorstop, or a ReqIF export from DOORS / Polarion), finds the tests and code that reference them, merges
-the JUnit results of your test run, and tells every pull request which requirements are
+repository (Markdown, YAML, Doorstop, or a ReqIF export from DOORS / Polarion), finds the tests
+and code that reference them, merges the JUnit results of your test run, and tells every pull
+request which requirements are
 **uncovered**, **covered**, **verified** or **failing** — then writes the traceability matrix an
 auditor asks for (IEC 62304, ISO 26262, EN 50128, DO-178C, IEC 61508, ECSS).
 
-No server, no account, no new editor: a CLI + a GitHub Action.
+No server, no account, no new editor: a CLI + a GitHub Action. Free and open source (MIT),
+with no paid tier.
 
 [![PyPI](https://img.shields.io/pypi/v/reqcov)](https://pypi.org/project/reqcov/)
 [![CI](https://github.com/Antoine005/reqcov/actions/workflows/ci.yml/badge.svg)](https://github.com/Antoine005/reqcov/actions/workflows/ci.yml)
 [![Marketplace](https://img.shields.io/badge/GitHub%20Marketplace-reqcov-blue)](https://github.com/marketplace/actions/reqcov-requirements-coverage)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-
-> A hosted version with coverage history, badges and a signed PDF for audit packages is
-> planned. [Join the waitlist](https://tally.so/r/Me4K28) if your team would use it.
+[![Python](https://img.shields.io/pypi/pyversions/reqcov)](https://pypi.org/project/reqcov/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/Antoine005/reqcov/blob/main/LICENSE)
 
 **[▶ See a live report](https://antoine005.github.io/reqcov/)** — the real output for the Python,
 C and C++ examples below, regenerated on every push. Nothing to install.
 
-[![reqcov report overview](docs/img/report-overview.png)](https://antoine005.github.io/reqcov/pytest-project/index.html)
+[![reqcov report overview](https://raw.githubusercontent.com/Antoine005/reqcov/main/docs/img/report-overview.png)](https://antoine005.github.io/reqcov/pytest-project/index.html)
 
 The matrix is filterable by status, every requirement links back to its source line, and every
 test links to the file that references it:
 
-[![reqcov traceability matrix](docs/img/report-matrix.png)](https://antoine005.github.io/reqcov/pytest-project/index.html)
+[![reqcov traceability matrix](https://raw.githubusercontent.com/Antoine005/reqcov/main/docs/img/report-matrix.png)](https://antoine005.github.io/reqcov/pytest-project/index.html)
 
 On a pull request the same run becomes one sticky comment:
 
@@ -94,9 +94,16 @@ open reqcov-report/index.html
 ```
 
 `reqcov-report/` contains `index.html` (interactive matrix), `matrix.csv` (auditor-friendly),
-`coverage.json` (machine readable, [versioned format](docs/coverage-json.md)) and `summary.md`
+`coverage.json` (machine readable, [versioned format](https://github.com/Antoine005/reqcov/blob/main/docs/coverage-json.md)) and `summary.md`
 (the PR comment). Add `pdf` and `reqif` to
 `report.formats` (or pass `-f pdf -f reqif`) for `matrix.pdf` and `requirements.reqif`.
+
+| Command | What it does |
+|---|---|
+| `reqcov init` | writes an example `reqcov.yml` |
+| `reqcov list` | lists the requirements that were read — check your globs first |
+| `reqcov check` | analyses, writes the reports, exits 1 when a rule is violated |
+| `reqcov report` | same analysis and reports, never fails |
 
 ## GitHub Action
 
@@ -120,6 +127,23 @@ jobs:
 The action posts (and keeps updating) one sticky comment on the pull request, writes the
 summary to the job page, emits annotations on the requirement lines that are uncovered or
 failing, and uploads the report directory as an artifact.
+
+| Input | Default | Meaning |
+|---|---|---|
+| `config` | auto-detect | path to `reqcov.yml` |
+| `root` | `.` | repository sub-directory to analyse |
+| `junit` | from `reqcov.yml` | JUnit XML glob(s), one per line |
+| `fail-on-error` | `true` | fail the job when a rule is violated |
+| `comment` | `true` | post and update the sticky pull-request comment |
+| `upload-report` | `true` | upload the report directory as an artifact |
+| `artifact-name` | `reqcov-report` | name of that artifact |
+| `version` | the Action's own code | pip spec (`==0.3.2`), used only when the Action's copy of reqcov is not available |
+| `compare-base` | `true` | on pull requests, show the delta against the base commit |
+| `base-ref` | PR base commit | git ref to compare against |
+| `github-token` | `github.token` | token used to post the comment |
+
+Outputs: `coverage` (% of testable requirements with a test), `errors` (rule violations) and
+`report-dir`.
 
 ## Coverage delta on pull requests
 
@@ -266,7 +290,7 @@ jira:
 | Field | Markdown body line | YAML key | Values |
 |---|---|---|---|
 | parents | `Parent: SYS-1, SYS-2` | `parent` / `parents` / `links` | ids |
-| verification | `Verification: test` | `verification` | `test` (default), `analysis`, `inspection`, `demonstration`, `none` |
+| verification | `Verification: test` | `verification` | `test` (default), `analysis`, `inspection`, `demonstration`, `review`, `none` |
 | status | `Status: draft` | `status` (Doorstop: `active: false` → obsolete) | free text; `obsolete` is ignored by rules |
 | tags | `Tags: safety, ui` | `tags` | list |
 | jira | `Jira: PROJ-12, PROJ-14` | `jira` / `issues` / `tickets` | issue keys |
@@ -281,10 +305,10 @@ installing anything.
 
 | Example | Stack | What it shows | Live report |
 |---|---|---|---|
-| [`examples/pytest-project`](examples/pytest-project) | Python, pytest | SYS→SRS levels, one deliberate gap and one orphan test | [open](https://antoine005.github.io/reqcov/pytest-project/index.html) |
-| [`examples/ceedling-unity`](examples/ceedling-unity) | C, Ceedling/Unity | HLR→LLR, `@implements` in sources, a failing test propagating to two requirements | [open](https://antoine005.github.io/reqcov/ceedling-unity/index.html) |
-| [`examples/googletest`](examples/googletest) | C++, GoogleTest | one-line requirements, `Suite.Name` results | [open](https://antoine005.github.io/reqcov/googletest/index.html) |
-| [`examples/gitlab-ci.yml`](examples/gitlab-ci.yml) | GitLab CI | merge-request delta and report artifact | — |
+| [`examples/pytest-project`](https://github.com/Antoine005/reqcov/tree/main/examples/pytest-project) | Python, pytest | SYS→SRS levels, one deliberate gap and one orphan test | [open](https://antoine005.github.io/reqcov/pytest-project/index.html) |
+| [`examples/ceedling-unity`](https://github.com/Antoine005/reqcov/tree/main/examples/ceedling-unity) | C, Ceedling/Unity | HLR→LLR, `@implements` in sources, a failing test propagating to two requirements | [open](https://antoine005.github.io/reqcov/ceedling-unity/index.html) |
+| [`examples/googletest`](https://github.com/Antoine005/reqcov/tree/main/examples/googletest) | C++, GoogleTest | one-line requirements, `Suite.Name` results | [open](https://antoine005.github.io/reqcov/googletest/index.html) |
+| [`examples/gitlab-ci.yml`](https://github.com/Antoine005/reqcov/blob/main/examples/gitlab-ci.yml) | GitLab CI | merge-request delta and report artifact | — |
 
 ## Status and roadmap
 
@@ -294,12 +318,19 @@ reports, GitHub Action with sticky PR comment.
 `0.3` — ReqIF import and export, Jira issue links, PDF export.
 `0.3.1` — adoption on existing projects: multi-module DOORS exports, ReqIF identifiers kept on
 export, versioned `coverage.json`.
+`0.3.2` — documentation: reqcov is free and open source only; README readable on PyPI.
 Under discussion ([#4](https://github.com/Antoine005/reqcov/issues/4)): per-spec requirement
 scopes (GitHub Spec Kit layouts) and requirement drift detection. Planned: StrictDoc input.
 
 ## Read more
 
-- [An IEC 62304 traceability matrix from GitHub Actions in 15 minutes](docs/blog/iec-62304-traceability-matrix-github-actions.md)
+- [An IEC 62304 traceability matrix from GitHub Actions in 15 minutes](https://github.com/Antoine005/reqcov/blob/main/docs/blog/iec-62304-traceability-matrix-github-actions.md)
+
+## Contributing
+
+Issues and pull requests are welcome. `pip install -e ".[dev]"`, then `python -m pytest -q`;
+the projects under `examples/` are the integration fixtures. The only runtime dependencies are
+PyYAML and Jinja2, and the aim is to keep it that way.
 
 ## License
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.2 — 2026-11-11
+Documentation and packaging only; the analysis and the reports are unchanged.
+- reqcov is free and open source (MIT) with no paid tier: the planned hosted version and its
+  waitlist are removed from the README, the PRD and the blog post.
+- README: Action inputs and outputs, the four CLI commands, the `review` verification method,
+  a Contributing section; images and links are absolute so the page reads correctly on PyPI.
+- Package metadata: project links (demo, changelog, issues) and Python version classifiers.
+- CI: Python 3.9 is tested on Ubuntu 24.04 (Ubuntu 26.04 runners no longer provide it).
+
 ## 0.3.1 — 2026-09-24
 - ReqIF: `reqif.id_prefix` also takes a mapping `{specification name: prefix}`, so a DOORS
   export holding several modules (each numbered from 1) gives `SYS-1`, `SRS-1`...

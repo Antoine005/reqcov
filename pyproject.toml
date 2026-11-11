@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reqcov"
-version = "0.3.1"
+version = "0.3.2"
 description = "Automate requirements traceability: trace requirements to tests and code, fail CI on gaps, generate audit-ready traceability matrices."
 readme = "README.md"
 license = { text = "MIT" }
@@ -16,6 +16,11 @@ classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Software Development :: Quality Assurance",
   "Topic :: Software Development :: Testing",
 ]
@@ -29,6 +34,10 @@ reqcov = "reqcov.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/Antoine005/reqcov"
+Documentation = "https://github.com/Antoine005/reqcov#readme"
+"Live demo" = "https://antoine005.github.io/reqcov/"
+Changelog = "https://github.com/Antoine005/reqcov/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Antoine005/reqcov/issues"
 
 [tool.setuptools.packages.find]
 include = ["reqcov*"]
